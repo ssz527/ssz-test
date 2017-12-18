@@ -1,0 +1,56 @@
+{
+  "name": "hdmap",
+  "version": "0.0.1",
+  "description": "hdmap is a web GIS engine using openlayers 3.X",
+  "main": "dist/hdmap.js",
+  "directories": {
+    "example": "examples",
+    "test": "test"
+  },
+  "scripts": {
+    "start": "npm run build",
+    "build": "npm run build:hdmap && npm run build:pub",
+    "build:gulp-bundle": "gulp bundle --gulpfile ./build/build.js",
+    "build:gulp-hdmap-build": "gulp build --gulpfile ./build/build.js",
+    "build:hdmap": "npm run build:gulp-bundle && npm run build:gulp-hdmap-build",
+    "build:pub": "webpack",
+    "dev": "npm run build && webpack-dev-server --env development",
+    "serve": "npm run build && http-server ./public -o",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@gitlab:xiaxuanyin/UI-mapcomponent.git"
+  },
+  "keywords": [
+    "map",
+    "openlayers3"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "openlayers": "3.20.0"
+  },
+  "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-preset-es2015-rollup": "^3.0.0",
+    "clean-webpack-plugin": "^0.1.17",
+    "copy-webpack-plugin": "^4.2.1",
+    "extract-text-webpack-plugin": "^3.0.2",
+    "gulp": "^3.9.1",
+    "gulp-banner": "^0.1.3",
+    "gulp-clean": "^0.3.2",
+    "gulp-clean-css": "^3.9.0",
+    "gulp-concat": "^2.6.1",
+    "gulp-notify": "^3.0.0",
+    "gulp-rename": "^1.2.2",
+    "gulp-uglify": "^3.0.0",
+    "html-webpack-plugin": "^2.30.1",
+    "http-server": "^0.10.0",
+    "less": "^2.7.3",
+    "rollup": "^0.52.1",
+    "rollup-plugin-babel": "^3.0.2",
+    "webpack": "^3.8.1",
+    "webpack-dev-server": "^2.9.5"
+  }
+}
