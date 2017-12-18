@@ -1,8 +1,8 @@
 {
-  "name": "hdmap",
+  "name": "ssztest",
   "version": "0.0.1",
   "description": "hdmap is a web GIS engine using openlayers 3.X",
-  "main": "dist/hdmap.js",
+  "main": "src/hdmap/mapManager.js",
   "directories": {
     "example": "examples",
     "test": "test"
@@ -20,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@gitlab:xiaxuanyin/UI-mapcomponent.git"
+    "url": "git@github.com:ssz527/ssz-test.git"
   },
   "keywords": [
     "map",
