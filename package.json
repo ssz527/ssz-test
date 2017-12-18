@@ -1,6 +1,6 @@
 {
   "name": "ssztest",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "hdmap is a web GIS engine using openlayers 3.X",
   "main": "src/hdmap/mapManager.js",
   "directories": {
@@ -29,7 +29,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "openlayers": "3.20.0"
+    "myopenlayers": "./myopenlayers"
   },
   "devDependencies": {
     "babel-core": "^6.26.0",

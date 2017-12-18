@@ -17,7 +17,7 @@
     "element-ui": "^2.0.3",
     "vue": "^2.5.2",
     "vue-router": "^3.0.1",
-    "hdmap": "git+http://gitlab/xiaxuanyin/UI-mapcomponent.git#master"
+    "hdmap": "git@github.com:ssz527/ssz-test.git"
   },
   "devDependencies": {
     "autoprefixer": "^7.1.2",

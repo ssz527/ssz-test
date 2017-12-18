@@ -6,12 +6,14 @@
 
 //TODO: 需要实现一套map自己的style库
 
+import 'myopenlayers'
 import eventRegister from "./event-register.js"
 import commonConfig from './commonConfig'
 import HDMap from './hdmap.js'
 import utils from './utils.js'
 
 import '../extend-files/hdlayer-extends.js'
+import '../extend-files/baidu-projection'
 
 var hdmap = {
     initMap: HDMap,

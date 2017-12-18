@@ -4,7 +4,7 @@
  * discription: extend baidu map
  */
 
-var forEachPoint = function(func) {
+export var forEachPoint = function(func) {
   return function(input, opt_output, opt_dimension) {
     var len = input.length;
     var dimension = opt_dimension ? opt_dimension : 2;
@@ -25,11 +25,11 @@ var forEachPoint = function(func) {
   };
 };
 
-var sphericalMercator = {}
+export var sphericalMercator = {}
 
-var RADIUS = 6378137;
-var MAX_LATITUDE = 85.0511287798;
-var RAD_PER_DEG = Math.PI / 180;
+export var RADIUS = 6378137;
+export var MAX_LATITUDE = 85.0511287798;
+export var RAD_PER_DEG = Math.PI / 180;
 
 sphericalMercator.forward = forEachPoint(function(input, output, offset) {
   var lat = Math.max(Math.min(MAX_LATITUDE, input[offset + 1]), -MAX_LATITUDE);
@@ -45,14 +45,14 @@ sphericalMercator.inverse = forEachPoint(function(input, output, offset) {
 });
 
 
-var baiduMercator = {}
+export var baiduMercator = {}
 
-var MCBAND = [12890594.86, 8362377.87,
+export var MCBAND = [12890594.86, 8362377.87,
     5591021, 3481989.83, 1678043.12, 0];
 
-var LLBAND = [75, 60, 45, 30, 15, 0];
+export var LLBAND = [75, 60, 45, 30, 15, 0];
 
-var MC2LL = [
+export var MC2LL = [
     [1.410526172116255e-8, 0.00000898305509648872, -1.9939833816331,
         200.9824383106796, -187.2403703815547, 91.6087516669843,
         -23.38765649603339, 2.57121317296198, -0.03801003308653,
@@ -78,7 +78,7 @@ var MC2LL = [
         -0.00001234426596, 0.00010322952773, -0.00000323890364,
         826088.5]];
 
-var LL2MC = [
+export var LL2MC = [
     [-0.0015702102444, 111320.7020616939, 1704480524535203,
         -10338987376042340, 26112667856603880,
         -35149669176653700, 26595700718403920,
@@ -104,14 +104,14 @@ var LL2MC = [
         1.58060784298199, 8.77738589078284, 0.37238884252424, 7.45]];
 
 
-function getRange(v, min, max) {
+export function getRange(v, min, max) {
   v = Math.max(v, min);
   v = Math.min(v, max);
 
   return v;
 }
 
-function getLoop(v, min, max) {
+export function getLoop(v, min, max) {
   var d = max - min;
   while (v > max) {
     v -= d;
@@ -123,7 +123,7 @@ function getLoop(v, min, max) {
   return v;
 }
 
-function convertor(input, output, offset, table) {
+export function convertor(input, output, offset, table) {
   var px = input[offset];
   var py = input[offset + 1];
   var x = table[0] + table[1] * Math.abs(px);
@@ -200,13 +200,13 @@ baiduMercator.inverse = forEachPoint(function(input, output, offset) {
   convertor(input, output, offset, table);
 });
 
-var gcj02 = {}
+export var gcj02 = {}
 
-var PI = Math.PI;
-var AXIS = 6378245.0;
-var OFFSET = 0.00669342162296594323;  // (a^2 - b^2) / a^2
+export var PI = Math.PI;
+export var AXIS = 6378245.0;
+export var OFFSET = 0.00669342162296594323;  // (a^2 - b^2) / a^2
 
-function delta(wgLon, wgLat) {
+export function delta(wgLon, wgLat) {
   var dLat = transformLat(wgLon - 105.0, wgLat - 35.0);
   var dLon = transformLon(wgLon - 105.0, wgLat - 35.0);
   var radLat = wgLat / 180.0 * PI;
@@ -218,7 +218,7 @@ function delta(wgLon, wgLat) {
   return [dLon, dLat];
 }
 
-function outOfChina(lon, lat) {
+export function outOfChina(lon, lat) {
   if (lon < 72.004 || lon > 137.8347) {
     return true;
   }
@@ -228,7 +228,7 @@ function outOfChina(lon, lat) {
   return false;
 }
 
-function transformLat(x, y) {
+export function transformLat(x, y) {
   var ret = -100.0 + 2.0 * x + 3.0 * y + 0.2 * y * y + 0.1 * x * y + 0.2 * Math.sqrt(Math.abs(x));
   ret += (20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0 / 3.0;
   ret += (20.0 * Math.sin(y * PI) + 40.0 * Math.sin(y / 3.0 * PI)) * 2.0 / 3.0;
@@ -236,7 +236,7 @@ function transformLat(x, y) {
   return ret;
 }
 
-function transformLon(x, y) {
+export function transformLon(x, y) {
   var ret = 300.0 + x + 2.0 * y + 0.1 * x * x + 0.1 * x * y + 0.1 * Math.sqrt(Math.abs(x));
   ret += (20.0 * Math.sin(6.0 * x * PI) + 20.0 * Math.sin(2.0 * x * PI)) * 2.0 / 3.0;
   ret += (20.0 * Math.sin(x * PI) + 40.0 * Math.sin(x / 3.0 * PI)) * 2.0 / 3.0;
@@ -268,12 +268,12 @@ gcj02.fromWGS84 = forEachPoint(function(input, output, offset) {
   output[offset + 1] = lat;
 });
 
-var bd09 = {}
+export var bd09 = {}
 
-var PI = Math.PI;
-var X_PI = PI * 3000 / 180;
+export var PI = Math.PI;
+export var X_PI = PI * 3000 / 180;
 
-function toGCJ02(input, output, offset) {
+export function toGCJ02(input, output, offset) {
   var x = input[offset] - 0.0065;
   var y = input[offset + 1] - 0.006;
   var z = Math.sqrt(x * x + y * y) - 0.00002 * Math.sin(y * X_PI);
@@ -283,7 +283,7 @@ function toGCJ02(input, output, offset) {
   return output;
 }
 
-function fromGCJ02(input, output, offset) {
+export function fromGCJ02(input, output, offset) {
   var x = input[offset];
   var y = input[offset + 1];
   var z = Math.sqrt(x * x + y * y) + 0.00002 * Math.sin(y * X_PI);
@@ -304,7 +304,7 @@ bd09.fromWGS84 = function(input, opt_output, opt_dimension) {
 };
 
 
-var projzh = {}
+export var projzh = {}
 
 projzh.smerc2bmerc = function(input, opt_output, opt_dimension) {
   var output = sphericalMercator.inverse(input, opt_output, opt_dimension);
@@ -331,9 +331,9 @@ projzh.ll2bmerc = function(input, opt_output, opt_dimension) {
 projzh.ll2smerc = sphericalMercator.forward;
 projzh.smerc2ll = sphericalMercator.inverse;
 
-var extent = [72.004, 0.8293, 137.8347, 55.8271];
+export var extent = [72.004, 0.8293, 137.8347, 55.8271];
 
-var baiduMercatorProj = new ol.proj.Projection({
+export var baiduMercatorProj = new ol.proj.Projection({
   code: 'baidu',
   extent: ol.extent.applyTransform(extent, projzh.ll2bmerc),
   units: 'm'
@@ -343,7 +343,7 @@ ol.proj.addProjection(baiduMercatorProj);
 ol.proj.addCoordinateTransforms('EPSG:4326', baiduMercatorProj, projzh.ll2bmerc, projzh.bmerc2ll);
 ol.proj.addCoordinateTransforms('EPSG:3857', baiduMercatorProj, projzh.smerc2bmerc, projzh.bmerc2smerc);
 
-var bmercResolutions = new Array(19);
+export var bmercResolutions = new Array(19);
 for (var i = 0; i < 19; ++i) {
   bmercResolutions[i] = Math.pow(2, 18 - i);
 }
