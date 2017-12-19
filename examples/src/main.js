@@ -6,7 +6,7 @@ import router from './router'
 import ElementUI from 'element-ui'
 import 'element-ui/lib/theme-chalk/index.css'
 import './mock/mock'
-import 'hdmap/dist/hdmap.min.js'
+import 'hdmap'
 // import 'openlayers'
 import 'hdmap/dist/hdmap.css'
 

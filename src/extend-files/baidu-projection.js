@@ -270,7 +270,6 @@ gcj02.fromWGS84 = forEachPoint(function(input, output, offset) {
 
 export var bd09 = {}
 
-export var PI = Math.PI;
 export var X_PI = PI * 3000 / 180;
 
 export function toGCJ02(input, output, offset) {

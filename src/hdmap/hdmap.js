@@ -5,7 +5,7 @@
  */
 
 //TODO: 需要对HDMap上的函数名称跟对外暴露接口进行统一
-
+import {bmercResolutions, extent, projzh, X_PI, outOfChina, delta} from '../extend-files/baidu-projection.js'
 /**
  * HDMap
  * @param {*} options map初始化参数

@@ -1,8 +1,19 @@
 <template>
     <div class="map-container">
-        <div id="bitmap"></div>
-        <div id="mapBaidu"></div>
-        <div id="baidumap"></div>
+        <div id="bitmap">
+            <div id="popup" class="ol-popup">
+                <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+                <div id="popup-content"></div>
+            </div>
+        </div>
+        <div id="mapBaidu">
+            <div id="popup2" class="ol-popup">
+                <a href="#" id="popup-closer2" class="ol-popup-closer"></a>
+                <div id="popup-content2"></div>
+            </div>
+        </div>
+        <div id="baidumap">
+        </div>
     </div>
 </template>
 <script>
@@ -35,7 +46,7 @@ export default {
             mapUrl: 'http://online1.map.bdimg.com/onlinelabel/?qt=tile&x={x}&y={y}&z={z}&styles=pl&p=1&scaler=1&udt=20171115',
             sat: 0,
             center: [113.619942, 23.304629],
-            popupDom: { popup: 'popup', popupcloser: 'popup-closer', popupcontent: 'popup-content' }
+            popupDom: { popup: 'popup2', popupcloser: 'popup-closer2', popupcontent: 'popup-content2' }
         })
 
         // eslint-disable-next-line
