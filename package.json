@@ -29,7 +29,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "myopenlayers": "./node_modules/ssztest/myopenlayers"
+    "myopenlayers": "git@github.com:ssz527/ssz-test.git#myol"
   },
   "devDependencies": {
     "babel-core": "^6.26.0",
