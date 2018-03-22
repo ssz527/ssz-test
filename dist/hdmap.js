@@ -1,5 +1,5 @@
 /**
- * hdmap 1.1.5
+ * ssztest 1.1.5
  * hdmap is a web GIS engine using openlayers 3.X
  *
  * Copyright 2017
