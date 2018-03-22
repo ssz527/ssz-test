@@ -95870,8 +95870,6 @@ goog.exportProperty(
     ol.control.ZoomToExtent.prototype.un);
 ol.VERSION = 'v4.5.0';
 OPENLAYERS.ol = ol;
-window.ol = ol;
-window.goog = goog;
 
   return OPENLAYERS.ol;
 }));

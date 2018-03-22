@@ -1,11 +1,11 @@
 {
   "name": "myopenlayers",
-  "version": "1.0.0",
-  "description": "",
+  "version": "1.1.0",
+  "description": "add ol & goog on window",
   "main": "myopenlayers/ol-debug.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC"
+  "author": "ssz",
+  "license": "BSD 2-Clause License"
 }
