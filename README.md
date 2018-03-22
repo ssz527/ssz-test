@@ -9,5 +9,6 @@ add
 to the page or 
 ```javascript
 import hdmap from hdmap;
+import 'hdmap/dist/hdmap.css'
 ```
 

@@ -6,18 +6,20 @@ import router from './router'
 import ElementUI from 'element-ui'
 import 'element-ui/lib/theme-chalk/index.css'
 import './mock/mock'
+import globalCom from './globalcomponents'
 import 'hdmap'
 // import 'openlayers'
 import 'hdmap/dist/hdmap.css'
 
+Vue.use(globalCom)
 Vue.use(ElementUI)
 
 Vue.config.productionTip = false
 
 /* eslint-disable no-new */
 new Vue({
-    el: '#app',
-    router,
-    template: '<App/>',
-    components: { App }
+  el: '#app',
+  router,
+  template: '<App/>',
+  components: { App }
 })

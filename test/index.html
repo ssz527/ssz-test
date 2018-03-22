@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>hdmap</title>
+  <!-- <script type="text/javascript" src="./lib/ol_v3.20.0/ol-debug.js"></script> -->
+  <script type="text/javascript" src="../lib/jquery/jquery-3.2.1.js"></script>
+  <link rel="stylesheet" href="./lib/hdmap/hdmap.css">
+  <!-- <link rel="stylesheet" href="./lib/ol_v3.20.0/ol.css"> -->
+  <!-- <link rel="stylesheet" href="./assets/css/popup.css"> -->
+  <!-- <script src="./lib/hdmap/hdmap.js"></script> -->
+  <style>
+    div,
+    ul,
+    ol,
+    li,
+    p,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin: 0;
+      padding: 0;
+    }
+
+    .map {
+      height: 600px;
+      width: 1000px;
+      border: 5px solid red;
+      margin: 10px;
+      float: left;
+    }
+
+    .active {
+      background: skyblue;
+      color: red;
+      font-size: 14px;
+      width: 200px;
+      text-align: center;
+    }
+
+    #test {
+      width: 100px;
+      height: 100px;
+      background: skyblue;
+    }
+
+    .testbtn {
+      width: 500px;
+      margin-top: 20px;
+      margin-right: 10px;
+    }
+
+    .testclass {
+      width: 200px;
+      background: white;
+      font-size: 14px;
+      text-align: center;
+      color: #333;
+      padding: 10px;
+    }
+
+    .testclass p {
+      height: 20px;
+      line-height: 20px;
+      text-align: center;
+    }
+
+    .item {
+      margin: 10px auto;
+    }
+
+    .item .valText {
+      width: 180px;
+      height: 20px;
+      margin: 5px;
+    }
+
+    .tip {
+      font-size: 12px;
+      color: rgb(226, 86, 86);
+    }
+
+    .imgcon {
+      display: inline-block;
+      width: 50px;
+      height: 50px;
+      text-align: center;
+      border: 1px solid #ccc;
+      margin-right: 8px;
+    }
+
+    .imgcon .choosebox {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+    }
+
+    .imgcon img {
+      display: inline-block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .controlBtn {
+      margin: 8px auto
+    }
+
+    .item1 {
+      margin-top: 10px;
+    }
+
+    .calculate {
+      display: inline-block;
+      margin-top: 10px;
+    }
+
+    .input-small {
+      width: 200px;
+      height: 30px;
+      margin: 10px;
+    }
+
+    .left-child {
+      margin: 10px 7px 1 0;
+    }
+
+    .right-child {
+      margin: 0 0 0 8px;
+    }
+
+    .left-child {
+      margin: 10px 7px 1 0;
+    }
+
+    .right-child {
+      margin: 0 0 0 8px;
+    }
+
+    .btn {
+      width: 125px;
+      height: 30px;
+      margin: 20px 10px 0px 0px;
+    }
+
+    #wzk {
+      border: 2px solid red;
+      height: 618px;
+      margin: 20px 0;
+      position: relative;
+    }
+
+    #testfunction {
+      float: left;
+    }
+
+    .mapF {
+      height: 700px;
+      width: 1400px;
+      border: 5px solid red;
+      margin: 10px;
+      float: left;
+    }
+
+    .carpop {
+      padding: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 可以在这里引入自己的html页面文件，调试时可以注释其他人的引入 -->
+  <!-- <div data-src="./ssz/ssz.html" ></div> -->
+  <!-- <div data-src="./wzk/wzk.html" ></div> -->
+  <div class="map" id="map1">
+    <div id="popup" class="ol-popup">
+      <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+      <div id="popup-content"></div>
+    </div>
+  </div>
+  <div class="testMarker">
+    <label class="tip">1、输入点位id</label>
+    <div class="item">
+      <input type="text" id="markerId" class="valText" value="123456" />
+    </div>
+    <label class="tip">2、点击地图，选取点位添加的位置坐标</label>
+    <div class="item">
+      起点：<input type="text" id="markerPos" class="valText" /><br/>
+      终点：<input type="text" id="markerPos2" class="valText" />
+    </div>
+    <label class="tip">3、选择点位类型</label>
+    <div class="item1">
+      <select id="markerType" class="valText">
+        <option value="camera">摄像头</option>
+        <option value="video">广播设备</option>
+        <option value="guarder">保安</option>
+        <option value="cleaner">保洁</option>
+        <option value="car">车辆</option>
+        <option value="gis">区域显示</option>
+        <option value="common">默认</option>
+      </select>
+    </div>
+    <label class="tip">4、请输入点位名称</label>
+    <div class="item">
+      <input type="text" id="markerName" class="valText" value="点位名称" />
+    </div>
+    <label class="tip">5、请选择点位图片</label>
+    <div class="item">
+      <div class="imgcon">
+        <img src="./assets/images/icon.png" />
+        <input type="radio" name="imgurl" class="choosebox" />
+      </div>
+      <div class="imgcon">
+        <img src="./assets/images/u346.png" />
+        <input type="radio" name="imgurl" class="choosebox" />
+      </div>
+      <div class="imgcon">
+        <img src="./assets/images/u4828.png" />
+        <input type="radio" name="imgurl" class="choosebox" />
+      </div>
+      <div class="imgcon">
+        <img src="./assets/images/u4833.png" />
+        <input type="radio" name="imgurl" class="choosebox" />
+      </div>
+      <div class="imgcon">
+        <img src="./assets/images/u4838.png" />
+        <input type="radio" name="imgurl" class="choosebox" />
+      </div>
+    </div>
+    <label class="tip">6、添加点位的数量</label>
+    <div class="item">
+      <input type="text" id="markerNum" class="valText" value="10" />
+    </div>
+    <div class="item">
+      <input type="button" id="addmarker" class="valText" value="生成点位" />
+      <!-- <input type="button" id="changeMap" data-flag = '0' class="valText" value="切换地图：1-2" /> -->
+    </div>
+  </div>
+  <h4 class="controlBtn">
+    <select id="chooseMarkerType" class="valText">
+      <option value="camera">摄像头</option>
+      <option value="video">广播设备</option>
+      <option value="guarder">保安</option>
+      <option value="cleaner">保洁</option>
+      <option value="car">车辆</option>
+      <option value="gis">区域显示</option>
+      <option value="common">默认</option>
+    </select>
+    <button id="controlMar" data-flag="0">隐藏点位</button>
+  </h4>
+  <h4 class="controlBtn">
+    <button id="modifyMap" data-flag="0">开启地图编辑</button>
+    <button id="delFeature">删除点位</button>
+  </h4>
+  <h4>
+    <button id="drawLine">打开画线工具</button>
+    <button id="saveLine">保存画线</button>
+    <button id="editLine">编辑画线</button>
+    <button id="removeLine">删除画线</button>
+  </h4>
+  <h4 class="controlBtn">
+    <select id="chooseShapeType">
+      <option value="Box">Box</option>
+      <option value="Polygon">Polygon</option>
+      <option value="Square">Square</option>
+      <option value="Circle">Circle</option>
+      <option value="LineString">LineString</option>
+    </select>
+    <button id="drawShape">打开画图工具</button>
+    <button id="saveShape">保存画图</button>
+    <button id="editShape">显示画图</button>
+  </h4>
+  <!-- <div class="map" id="map2">
+      <div id="popup2" class="ol-popup">
+          <a href="#" id="popup-closer2" class="ol-popup-closer"></a>
+          <div id="popup-content2"></div>
+      </div>
+  </div> -->
+
+  <!-- wzk test 开始-->
+  <div id="wzk" style="clear: both;">
+    <div class="map" id="map3" tabindex="0"></div>
+    <div id="camera" class="testclass">
+      <p>this is camera</p>
+      <p>this is camera</p>
+      <p>this is camera</p>
+    </div>
+    <div id="broadcast" class="testclass">
+      <p>this is video</p>
+      <p>this is video</p>
+      <p>this is video</p>
+    </div>
+    <div id="warning" class="testclass">
+      <p>this is cleaner</p>
+      <p>this is cleaner</p>
+      <p>this is cleaner</p>
+    </div>
+    <div id="guarder" class="testclass">
+      <p>this is guarder</p>
+      <p>this is guarder</p>
+      <p>this is guarder</p>
+    </div>
+    <div id="testfunction">
+      <div class="testbtn">
+        <h4>点位更新样式测试</h4>
+        <button id="success">成功</button>
+        <button id="default">默认</button>
+        <button id="warnfeature">警告</button>
+        <button id="delete">删除</button>
+      </div>
+      <div class="testbtn">
+        <h4>区域更新样式测试</h4>
+        <button id="successArea">成功</button>
+        <button id="defaultArea">默认</button>
+        <button id="warningArea">警告</button>
+      </div>
+      <div class="testbtn">
+        <h4>添加统计点图标</h4>
+        <button id="countCamera">摄像头</button>
+        <button id="countCleaner">报警</button>
+        <button id="countBroadcast">广播</button>
+        <button id="removecount">移除</button>
+        <button id="addb">广播</button>
+      </div>
+      <div class="testbtn">
+        <h4>切换显示统计点图标</h4>
+        <label>
+          <input id="checkcamera" type="checkbox">摄像头</label>
+        <label>
+          <input id="checkwarning" type="checkbox">报警</label>
+        <label>
+          <input id="checkbroadcast" type="checkbox">广播</label>
+      </div>
+      <div class="testbtn">
+        <h4>区域样式</h4>
+        <button id="addAreaw">添加区域</button>
+        <button id="successAreaw">默认</button>
+        <button id="defaultAreaw">警报开启</button>
+        <button id="closewarn">警报关闭</button>
+      </div>
+      <div class="testbtn">
+        <h4>弹窗实现</h4>
+        <button id="camerapop">摄像头</button>
+        <button id="guarderpop">默认弹窗</button>
+        <button id="morefeature">聚合</button>
+        <button id="broadcastpop">广播</button>
+        <button id="closepop">关闭</button>
+      </div>
+      <div class="testbtn">
+        <h4>切换地图</h4>
+        <button id="changemap">切换</button>
+      </div>
+    </div>
+    <!-- <div class="map" id="testchangemap"></div> -->
+    <!-- wzk test 结束-->
+
+    <div id="sjw" style="clear: both;">
+      <div id="map4" class="map"></div>
+      <div class="item1">
+        <h4>从地图上选取点位坐标</h4>
+        <input type="text" id="markerPos1" class="valText" placeholder="点位坐标1" />
+        <input type="text" id="markerPos2" class="valText" placeholder="点位坐标2" />
+        <input type="text" id="markerPos3" class="valText" placeholder="点位坐标3" />
+        <input type="text" id="lonlatA" class="valText" placeholder="113.623583,23.301617" />
+        <input type="text" id="lonlatB" class="valText" placeholder="113.624305,23.300673"/>
+        <input type="text" id="lonlatC" class="valText" placeholder="113.622706,23.299229"/>
+    </div>
+    <div class="calculate">
+      <button class="btn" id="btn3">中心点计算</button>
+      <input type="text" placeholder="" id="input3" class="input-small">
+      <a href="http://aqsc.shmh.gov.cn/gis/getpoint.htm" target="_blank">百度地图坐标拾取验证</a>
+      <br>
+      <button class="btn" id="btn4">计算偏移比例尺</button>
+      <input type="text" placeholder="" id="input4" class="input-small">
+      <br>
+      <button class="btn" id="btn1">计算两GPS点距离</button>
+      <input type="text" placeholder="" id="input1" class="input-small"> 
+      <a href="https://map.baidu.com/" target="_blank">百度地图坐标测距</a>
+      <br>
+      <button class="btn" id="btn2">计算两个点位距离</button>
+      <input type="text" placeholder="" id="input2" class="input-small">
+
+      </div>
+    </div>
+
+    <!-- 重心以及广播 -->
+    <div id="mapH" class="map"></div>
+
+    <div id="carwrap">
+      <div id="mapW" class="map"></div>
+      <button id="gis" style="float: left;height: 40px;width: 100px;margin: 10px;">gis</button>
+      <button id="bmap" style="float: left;height: 40px;width: 100px;margin: 10px;">bmap</button>
+    </div>
+
+    <!-- 点位越界 -->
+    <div id="map5" class="map"></div>
+    
+    <!-- 区域重叠的判断函数 -->
+    <div id="map50" class="map"></div>
+    
+</body>
+
+</html>

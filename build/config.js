@@ -9,20 +9,13 @@ var header = '/**\n' +
 module.exports = {
     headerFile: './headerEnd/header.js',
 
-    olSourceCode: '../lib/ol_v3.20.0/ol-debug-export.js',
-
-    baiduProjection: '../src/extend-files/baidu-projection.js',
-    hdlayerExtend: '../src/extend-files/hdlayer-extends.js',
-
     rollupInput: '../src/hdmap/mapManager.js',
-    rollupOutput: '../dist/hdmap-bundle.js',
-
-    hdmapAndOlBundle: '../dist/hdmap-ol-bundle.js',
+    rollupOutput: '../dist/hdmap.bundle.js',
 
     header: header,
 
     cssFiles: [
-        '../lib/ol_v3.20.0/ol.css',
+        '../node_modules/myopenlayers/myopenlayers//ol.css',
         '../src/assets/css/*'
     ],
 

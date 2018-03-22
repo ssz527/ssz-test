@@ -29,6 +29,6 @@ module.exports = {
         'no-debugger': process.env.NODE_ENV === 'production' ? 2 : 0,
         // require function names to match the name of the variable or property to which they are assigned
         //'space-before-function-paren': 0,
-        'indent': [2, 4]
+        // 'indent': [2, 4]
     }
 }

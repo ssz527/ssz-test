@@ -1,8 +1,8 @@
-﻿.ol-popup {
+﻿.hdmap-ol-popup {
   position: absolute;
   background-color: white;
-  -webkit-filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
-  filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+  -webkit-filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
   padding: 15px;
   border-radius: 10px;
   border: 1px solid #cccccc;
@@ -10,33 +10,143 @@
   left: -50px;
   min-width: 280px;
 }
-.ol-popup:after, .ol-popup:before {
+
+.hdmap-ol-popup:after,
+.hdmap.ol-popup:before {
   top: 100%;
   border: solid transparent;
-  content: " ";
+  content: ' ';
   height: 0;
   width: 0;
   position: absolute;
   pointer-events: none;
 }
-.ol-popup:after {
+
+.hdmap-ol-popup:after {
   border-top-color: white;
   border-width: 10px;
   left: 48px;
   margin-left: -10px;
 }
-.ol-popup:before {
+
+/* .hdmp-ol-popup:before {
   border-top-color: #cccccc;
   border-width: 11px;
   left: 48px;
   margin-left: -11px;
-}
-.ol-popup-closer {
+} */
+
+.hdmap-ol-popup-closer {
   text-decoration: none;
   position: absolute;
   top: 2px;
   right: 8px;
 }
-.ol-popup-closer:after {
-  content: "✖";
+
+.hdmap-ol-popup-closer:after {
+  content: '✖';
+}
+
+.hdmap-ol-popup-closer:hover {
+  cursor: pointer;
+  color: darkcyan;
+}
+
+/* 列表弹窗样式 */
+
+ul,
+ol,
+li {
+  list-style: none;
+}
+ul,
+li,
+ol,
+p,
+img {
+  margin: 0;
+  padding: 0;
+}
+
+.hdmap-list-popup {
+  position: absolute;
+  min-width: 120px;
+  top: -20px;
+  left: 20px;
+}
+
+.hdmap-list-popup:before {
+  right: 100%;
+  border: solid transparent;
+  content: ' ';
+  height: 0;
+  width: 0;
+  position: absolute;
+  top: 10px;
+  pointer-events: none;
+  border-right-color: #ccc;
+  border-width: 11px;
+}
+
+.hdmap-list-popup .hdmap-list-popupcontent {
+  padding: 10px;
+  background-color: #ddd;
+  font-size: 14px;
+  height: 20px;
+  color: #333;
+}
+
+.hdmap-list-popup .hdmap-list-popupcontent:hover {
+  background-color: #fff;
+  cursor: pointer;
+}
+
+.hdmap-list-popup .hdmap-list-popupcontent .hdmap-list-popupimg {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 20px;
+}
+
+.hdmap-list-popup .hdmap-list-popupcontent .hdmap-list-popupparm {
+  padding-left: 35px;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
+  white-space: nowrap;
+}
+.hdmap-popup-wrapper {
+  position: absolute;
+  left: -30px;
+  min-width: 200px;
+  background-color: white;
+  -webkit-filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
+  border-radius: 10px;
+  border: 1px solid #cccccc;
+  /* padding: 10px; */
+}
+
+.hdmap-popup-wrapper:after,
+.hdmap-popup-wrapper:before {
+  top: 100%;
+  border: solid transparent;
+  content: ' ';
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
+}
+
+.hdmap-popup-wrapper:after {
+  border-top-color: white;
+  border-width: 10px;
+  left: 30px;
+  margin-left: -10px;
+}
+
+.hdmap-popup-wrapper-arrow {
+  position: absolute;
+  left: -30px;
+  min-width: 200px;
 }

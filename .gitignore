@@ -1,4 +1,9 @@
 node_modules
 .vscode/
 public/*
-dist
+
+test/ssjtest.html
+karma
+npm-debug.log
+unit/coverage
+coverage/

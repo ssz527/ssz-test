@@ -5,7 +5,7 @@
   "author": "ssz",
   "private": true,
   "scripts": {
-    "dev": "node build/dev-server.js",
+    "dev": "sh copydist.sh && node build/dev-server.js",
     "start": "npm run dev",
     "build": "node build/build.js",
     "unit": "cross-env BABEL_ENV=test karma start test/unit/karma.conf.js --single-run",
@@ -17,7 +17,7 @@
     "element-ui": "^2.0.3",
     "vue": "^2.5.2",
     "vue-router": "^3.0.1",
-    "hdmap": "git@github.com:ssz527/ssz-test.git"
+    "hdmap": "git+http://gitlab/xiaxuanyin/UI-mapcomponent.git#master"
   },
   "devDependencies": {
     "autoprefixer": "^7.1.2",

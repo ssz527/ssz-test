@@ -1,6 +1,6 @@
 const rollup = require('rollup')
 const babel = require('rollup-plugin-babel')
-const pump = require('pump');
+const eslint = require('rollup-plugin-eslint')
 
 const gulp = require('gulp')
 const concat = require('gulp-concat')
@@ -9,20 +9,26 @@ const uglify = require('gulp-uglify')
 const clean = require('gulp-clean')
 const banner = require('gulp-banner')
 const cleanCss = require('gulp-clean-css')
+const base64 = require('gulp-base64')
 
 const config = require('./config')
 const package = require('../package.json')
 
 //清空文件夹，避免资源冗余  
-gulp.task('clean',function(){  
+gulp.task('clean',function(){
     return gulp.src('../dist',{read:false})
         .pipe(clean({force:true}));  
 });  
 
+//构建hdmap.bundle.js文件
 gulp.task('bundle', ['clean'], async function(cb){
     var bundle = await rollup.rollup({
         input: config.rollupInput,
-        plugins: [ babel() ]
+        plugins: [ eslint({
+              exclude: [
+                '**/extend-files/*.js',
+              ]
+            }), babel()]
     });
 
     await bundle.write({
@@ -35,44 +41,36 @@ gulp.task('bundle', ['clean'], async function(cb){
         }
     });
 
-    return gulp.src([config.olSourceCode, config.rollupOutput])
-    .pipe(concat('hdmap-ol-bundle.js'))
-    .pipe(gulp.dest('../dist'))
+    return gulp.src(config.rollupOutput)
     .pipe(rename({suffix:'.min'}))
     .pipe(uglify())
     .pipe(gulp.dest('../dist'))
 })
 
-// gulp.task('hdmap-build', ['bundle'], function(){
-gulp.task('hdmap-build', function(){
-    return gulp.src([
-        config.hdmapAndOlBundle,
-        config.baiduProjection
-    ])
-    .pipe(concat('hdmap.js'))
+gulp.task('hdmap-build', ['bundle'], function(){
+    return gulp.src(config.rollupOutput)
+    .pipe(rename('hdmap.js'))
     .pipe(banner(config.header, {
         pkg: package
     }))
     .pipe(gulp.dest('../dist'))
 })
 
+gulp.task('css-build', ['clean'], function(){
+    return gulp.src(config.cssFiles)
+    .pipe(concat('hdmap.css'))
+    .pipe(base64())
+    .pipe(cleanCss())
+    .pipe(gulp.dest('../dist'))
+})
+
 gulp.task('build',['css-build','hdmap-build'], function(){
-    return gulp.src([
-            '../dist/hdmap-ol-bundle.min.js', 
-            config.baiduProjection
-        ])
-        .pipe(concat('hdmap.min.js'))
+    return gulp.src('../dist/hdmap.bundle.min.js')
+        .pipe(rename('hdmap.min.js'))
         .pipe(banner(config.header, {
             pkg: package
         }))
         .pipe(gulp.dest('../dist'))
-})
-
-gulp.task('css-build', function(){
-    return gulp.src(config.cssFiles)
-    .pipe(concat('hdmap.css'))
-    .pipe(cleanCss())
-    .pipe(gulp.dest('../dist'))
 })
 
 // gulp.task('default', ['build']);

@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+  <link rel="stylesheet" href="../../lib/ol_v3.20.0/ol.css" type="text/css">
+  <link rel="stylesheet" href="popup.css">
+  <title>map handle example</title>
+  <script src="../../lib/ol_v3.20.0/ol-debug.js"></script>
+  <script src="jquery-3.2.1.js" type="text/javascript"></script>
+  <!-- <script src="ol3/ol.js" type="text/javascript"></script> -->
+  <script src="hdlayer-extends.js" type="text/javascript"></script>
+  <script src="baidu-projection.js" type="text/javascript"></script>
+  <script src="event-register.js" type="text/javascript"></script>
+  <script src="hdMap.js" type="text/javascript"></script>
+</head>
+
+<body>
+  <h1>My Map</h1>
+  <div id="map1" style="float:left;height:512px;width:48%;margin-right:30px;">
+    <div id="popup" class="ol-popup">
+      <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+      <div id="popup-content"></div>
+    </div>
+  </div>
+
+  <div style="float:left">
+    <input type="button" id="layerBtn" flag="1" value="图层显示/隐藏" />
+    <textarea id='markertextarea' rows='10' cols='50'></textarea>
+    <div>
+      <div>
+        <input type="button" id="drawlineBtn" flag="0" value="打开/关闭画线工具" />
+        <textarea id='linetextarea' rows='10' cols='50'></textarea>
+      </div>
+      <div>
+        <input type="button" id="drawshapeBtn" flag="0" value="打开/关闭选择工具" />
+        <!--这里只展示了框选，还有圈选和多边形选择 -->
+        <textarea id='shapetextarea' rows='10' cols='50'></textarea>
+      </div>
+      <div>
+        <input type="text" id="markerid" value="" />
+        <!--这里只展示了框选，还有圈选和多边形选择 -->
+        <input type="button" id="deleteBtn" value="删除" />
+        <!--这里只展示了框选，还有圈选和多边形选择 -->
+      </div>
+
+      <div>
+        <input type="button" id="changeBtn" value="切换地图" />
+        <!--这里只展示了框选，还有圈选和多边形选择 -->
+      </div>
+
+      <div>
+        <input type="button" id="openDragTool" value="打开拖动" />
+        <input type="button" id="closeDragTool" value="关闭拖动" />
+        <!--这里只展示了框选，还有圈选和多边形选择 -->
+      </div>
+
+      <script type="text/javascript">
+        var mapObj = {};
+				/*1.1
+					初始化光栅图
+					
+					这里展示的功能是点击地图，如果点击的位置已经添加了marker，则会弹出气泡，否则，会新增marker
+				*/
+        eventRegister.register({
+          singleclick: function (e, feature, type) {
+            //如果是新增的就会加入在textarea中加入坐标，上面的参数根据需要自己修改
+            if (type == 'new') {
+              var text = $("#markertextarea").html();
+              text += '(' + feature.getId() + ',' + e.coordinate + ')';
+              $("#markertextarea").html(text);
+            }
+          }
+        });
+        var polyCoords = [[[42.5, 94.9375], [41.5, 33.9375], [151, 39.4375], [151.5, 99.4375], [68.5, 112.9375], [42.5, 93.9375]]];
+        var polyCoords1 = [[[-8, 45.4375], [-21, 41.9375], [-25, 24.4375], [-59, 17.4375], [-51, 7.9375], [-51, -2.0625], [-66.5, -13.0625], [-70, -23.0625], [-60.5, -38.5625], [-49.5, -49.0625], [-28.5, -57.0625], [-21.5, -46.5625], [7, -63.0625],
+        [-6.5, -43.5625], [2.5, -35.5625], [2.5, -23.0625], [21, -22.5625], [19, -8.0625], [6.5, -2.5625], [14.5, 18.9375], [1, 28.4375], [-5, 35.9375], [2.5, 41.9375], [-6.5, 45.9375]]];
+        var options = {
+          gisEngine: "bitmap",
+          sizeW: 1024,
+          sizeH: 986,
+          domId: 'map1',
+          mapUrl: "map.png",
+          maxZoom: 3,
+          center: [112.334403, 39.8],
+          popupDom: { popup: 'popup', popupcloser: 'popup-closer', popupcontent: 'popup-content' },
+          gisLayer: [polyCoords, polyCoords1]
+        };
+        var hdmap1 = new hdmap(options);
+				/*
+					此处添加点位的逻辑为，需要预先创建图层，添加点位之前会先检查图层是否存在，如果不存在则不会进行点位添加
+					此处的逻辑也可以改为如果图层不存在则创建图层，需要考虑
+				*/
+        hdmap1.addLayerByLayerKey('testLayer');
+        mapObj[options.domId] = hdmap1;
+        var id = new Date().valueOf();
+        hdmap1.addMarker({
+          id: 1,
+          position: [-40, 3.75],
+          markerType: 'cmamera',
+          name: "黄飞龙",
+          imgUrl: "icon.png",
+          size: [32, 48]
+        },
+          "testLayer"
+        );
+        hdmap1.addMarker({
+          id: 2,
+          position: [40, 3.75],
+          markerType: 'video',
+          name: "黄飞龙2",
+          imgUrl: "icon.png",
+          size: [32, 48]
+        },
+          "testLayer"
+        );
+
+				/*
+					此处的key是注册一个时间之后，会生成一个key值，用于以后管理此事件，比如你想移除此事件，就需要这个key值，
+					在hdmap.js中的eventKey已经进行管理，eventKey为一个对象，key为事件类型，value为注册此事件后生成的key
+					提示:鼠标点击事件与画线事件都开启时可能存在某些冲突，所以到时候需要一些逻辑判断
+				*/
+        hdmap1.addEventListenerEve('singleclick');
+
+        $("#layerBtn").click(function () {
+          if ($(this).attr("flag") == "1") {
+            //隐藏
+            hdmap1.setLayerVisible("testLayer", false);
+            $(this).attr("flag", "0");
+          } else {
+            hdmap1.setLayerVisible("testLayer", true);
+            $(this).attr("flag", "1");
+          }
+        });
+
+        $("#drawlineBtn").click(function () {
+          if ($(this).attr("flag") == "1") {
+            //关闭
+            hdmap1.closeDrawLineTool();
+            $(this).attr("flag", "0");
+            $("#linetextarea").html('');
+          } else {
+            hdmap1.openDrawLineTool(
+              { color: '#ffcc33', width: 2 },
+              new ol.style.Circle({
+                radius: 7,
+                fill: new ol.style.Fill({ color: 'red' })
+              }), function (start, end) {
+                return [end];
+              }, function (e) {
+                var text = $("#linetextarea").html();
+                $("#linetextarea").html(text + '   ' + e.feature.getGeometry().getCoordinates());
+              });
+            $(this).attr("flag", "1");
+          }
+        });
+        $("#drawshapeBtn").click(function () {
+          if ($(this).attr("flag") == "1") {
+            //关闭
+            hdmap1.closeDrawShapeTool();
+            $(this).attr("flag", "0");
+          } else {
+            hdmap1.openDrawShapeTool('Circle', function (e) {
+              var arr = [];
+              var feature = e.feature;
+              var layers = hdmap1.getOutterLayers();
+              console.log(layers);
+              var selectFeature = [];
+              for (var key in layers) {
+                var layer = layers[key];
+                selectFeature = layer.getSource().getFeaturesInExtent(feature.getGeometry().getExtent())
+              }
+              var text = "";
+              for (var i = 0; i < selectFeature.length; i++) {
+                console.log(selectFeature[i].getId());
+                arr.push(selectFeature[i].extProperties.position)
+                // text += "," + selectFeature[i].extProperties.position;
+                text =JSON.stringify(arr);
+              }
+              console.log(arr);
+              $("#shapetextarea").html(text);
+            });
+            $(this).attr("flag", "1");
+          }
+        });
+
+        $("#deleteBtn").click(function () {
+          var id = $("#markerid").val();
+          if (id != "") {
+            hdmap1.removeMarkerBylayerKey(id, "testLayer");
+          }
+        });
+				/*1.3
+					初始化百度地图卫星图
+				*/
+				/*var options = {
+							gisEngine:'baidu',
+							domId:'map',
+							mapUrl:'http://shangetu1.map.bdimg.com/it/u=x={x};y={y};z={z};v=009;type=sate&fm=46&app=webearth2&v=009&udt=20171115',
+							satUrl:'http://online1.map.bdimg.com/onlinelabel/?qt=tile&x={x}&y={y}&z={z}&styles=sl&p=1&scaler=1&udt=20171115'
+							sat:1,
+							center:[113.619942,23.304629]
+						};*/
+
+
+				/*
+					在百度地图中添加点位，这里需要特别注意的是，如果我们手里有一个真实的gps数据，想要将这个数据点位展示到百度地图上时，
+					需要进行一下坐标转换，ol.proj.transform([113.61994199999998, 23.304629000000006],'EPSG:4326', 'EPSG:3857')  这句话，将经纬度转换为米坐标系
+					这样就可以将点位展示到正确的位置上，平时我们存储点位的经纬度，小数点后保存5-6位就完全够用了
+				
+				
+					这里展示了用原生的事件转换坐标向地图上添加点位
+				*/
+				/*$('body').click(function(e){
+					var lonlat = hdmap.getLonLat(e);
+					console.log(lonlat);
+					var id = new Date().valueOf();
+					hdmap.addMarker({id:id,position:lonlat,name:id,imgUrl:"arrow.png",size:[32,32]},"testLayer");
+				})*/
+
+
+				/*2.2
+					下面这个定时任务是试验在某图层上更新点位信息，这里更新的是位置
+				*/
+				/*setTimeout(function(){
+					//更新marker
+					hdmap.updateMarker(id,'testLayer',{position:[0,0],name:'hoho'});
+				},3000);*/
+
+				/*
+					4.通过传入坐标，在地图上添加点、线、图形
+					
+					第一个参数为此feature的id ：可填，如果需要对单个feature进行控制，此处必须填写
+					第二个参数为此feature的类型   'point' || 'line'  ，  画多边形其实就是多个线的连接
+					第三个参数为此feature的坐标，数组类型，画一个点的画也是数组，数组中只需要一个元素就行了
+					第四个参数为图层的layerKey : 必填
+				*/
+				/*4.1
+				下面这句代码就是画了一个正方形
+				hdmap1.drawFeature("123","line",[{mapX:0,mapY:0},{mapX:0,mapY:100},{mapX:100,mapY:100},{mapX:100,mapY:0},{mapX:0,mapY:0}],{color: '#ffcc33',width: 5},"lineLayer");
+				*/
+				/*
+					浏览器窗口大小变化，地图重新定位尺寸
+				*/
+				/*$(window).resize(function(){
+					hdmap.mapResize();
+				});*/
+				/*
+					加载矢量feature
+				*/
+
+        var style = new ol.style.Style({
+          fill: new ol.style.Fill({
+            color: 'rgba(255, 255, 255, 0.2)'
+          }),
+          stroke: new ol.style.Stroke({
+            color: '#33c7ff',
+            width: 2
+          })
+        });
+        hdmap1.addEventListenerEve('pointermove');
+
+				/**
+				 * bitmap和gis地图切换的例子，重新初始化另一个地图对象，在切换时更换地图的target即可
+				*/
+				/*
+				var options = {
+					gisEngine: 'baidu',
+					domId: null,
+					mapUrl: 'http://online1.map.bdimg.com/onlinelabel/?qt=tile&x={x}&y={y}&z={z}&styles=pl&p=1&scaler=1&udt=20171115',
+					sat: 0,
+					center: [113.619942, 23.304629],
+					popupDom: { popup: 'popup', popupcloser: 'popup-closer', popupcontent: 'popup-content' }
+				};
+				var hdmap2 = new hdmap(options);
+				var cur = 'bitmap';
+				$("#changeBtn").click(function (e) {
+					if (cur == 'bitmap') {
+						cur = 'baidu';
+						hdmap1.getMap().setTarget(null);
+						hdmap2.getMap().setTarget('map1');
+					} else {
+						cur = 'bitmap';
+						hdmap1.getMap().setTarget('map1');
+						hdmap2.getMap().setTarget(null);
+					}
+				});
+				*/
+
+				/**
+				 * 打开关闭拖动功能 
+				 */
+        $("#openDragTool").click(function () {
+          hdmap1.openDragTool(function () {
+            console.log("drag start")
+          }, function () {
+            console.log("drag end")
+          }, function () {
+            console.log("select")
+          }, false)
+        });
+        $("#openDragTool").click(function () {
+          hdmap1.closeDragTool()
+        });
+      </script>
+</body>
+
+</html>
