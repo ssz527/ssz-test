@@ -31,13 +31,26 @@ ol.layer.HDVector = function (layerKey, optOptions) {
     /** @type {olx.layer.LayerOptions} */ (baseOptions)
   )
   this.layerKey = layerKey
+  this.visibleFlag = true
 }
 ol.inherits(ol.layer.HDVector, ol.layer.Vector)
 
 ol.layer.HDVector.prototype.getLayerKey = function () {
   return this.layerKey
 }
-
+/**
+ * 此参数指示该层是否被人为控制显示状态：true可显示，false不可显示
+ */
+ol.layer.HDVector.prototype.getVisibleFlag = function () {
+  return this.visibleFlag
+}
+/**
+ * 此参数指示该层是否被人为控制显示状态：true可显示，false不可显示
+ * params {Boolean}
+ */
+ol.layer.HDVector.prototype.setVisibleFlag = function (flag) {
+  this.visibleFlag = flag
+}
 /**
  * 此类是对ol.Feature的一个扩展，在ol3中已经没有了marker这个概念，
  * 想在地图上添加设备点位，需要一个feature，为了迎合业务，所以对其

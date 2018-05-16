@@ -43,20 +43,42 @@ const layerMap = {
   // 电子指路牌图层
   signpost: 'signpostLayer',
   // 广播图层
-  broadcast: 'broadcastLayer'
+  broadcast: 'broadcastLayer',
+  // 点位报警图层
+  warnMarker: 'warnMarkerLayer',
+  // 住户图层
+  households: 'householdsLayer',
+  // 访客图层
+  visitor: 'visitorLayer',
+  // 陌生人图层
+  stranger: 'strangerLayer',
+  // 门禁图层
+  control: 'controlLayer',
+  // 车闸图层
+  brake: 'brakeLayer',
+  // 人行道闸图层
+  gates: 'gatesLayer',
+  // 电梯图层
+  elevator: 'elevatorLayer',
+  // 地锁图层
+  lock: 'lockLayer'
 }
-
 /**
- * getLayerKeyByType
  * 根据feature的type获取对应所在图层的名称
- * @param {String} type
+ * @param {String} type 点位类型
+ * @param {int|undefine} zoomLevel 点位需要在哪个缩放等级显示
  */
-function getLayerKeyByType (type) {
+function getLayerKeyByType (type, zoomLevel) {
   // TODO 这里可能需要根据类型的数据进行判断获取，暂时用map方式存取
-  if (layerMap[type]) {
-    return layerMap[type]
+  if (zoomLevel) {
+    // 点位的类型，如果有点位显示等级，则类型要加上等级
+    return type + 'Layer_' + zoomLevel
   } else {
-    return layerMap.common
+    if (layerMap[type]) {
+      return layerMap[type]
+    } else {
+      return layerMap.common
+    }
   }
 }
 function getLayerMap () {

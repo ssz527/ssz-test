@@ -92,7 +92,11 @@ export default {
     // 放入车辆
     editCar () {
       var borderPoints = this.areaInfo.borderPoints[0]
-      borderPoints.pop()
+      if (borderPoints.length === 5) {
+        borderPoints.pop()
+      } else {
+        borderPoints = borderPoints
+      }
       // 根据顶点坐标获取中心
       var center = hdmap.utils.getGeometryCenter(borderPoints)
       // 添加点位
@@ -146,9 +150,9 @@ export default {
           this.bitmap.editDrawShape(e.feature);
         } else {
           this.$message({
-          message: '没有选中车位',
-          type: 'warning'
-        })
+            message: '没有选中车位',
+            type: 'warning'
+          })
         }
       })
     },

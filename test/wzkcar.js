@@ -1,6 +1,6 @@
 import '../src/hdmap/mapManager.js'
 export const wzkcar = function () {
-  window.mapObj = null
+  window.mapObjWzk = null
   // 测试模块
   var option = {
     gisEngine: 'baidu',
@@ -19,11 +19,11 @@ export const wzkcar = function () {
     }
   }
   function mapinit (option) {
-    if (mapObj) {
-      mapObj.getMap().setTarget(null)
+    if (mapObjWzk) {
+      mapObjWzk.getMap().setTarget(null)
     }
-    mapObj = new hdmap.initMap(option)
-    mapObj.getMap().setTarget(mapW)
+    mapObjWzk = new hdmap.initMap(option)
+    mapObjWzk.getMap().setTarget(mapW)
   }
   
   // let id = new Date().valueOf()
@@ -31,7 +31,7 @@ export const wzkcar = function () {
   var bmap = document.getElementById('bmap')
   mapinit(option)
   gis.onclick = function () {
-    console.log(mapObj.getZoom())
+    console.log(mapObjWzk.getZoom())
     option.sat = 0
     console.log(option)
     mapinit(option)

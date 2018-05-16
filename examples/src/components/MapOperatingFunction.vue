@@ -1,7 +1,7 @@
 <template>
   <div class="map-container">
     <!-- 装初始化地图的容器 必有-->
-    <div id="bitmap" style="width: 100%"></div>
+    <div id="bitmap" style="width: 100%; height: 600px;"></div>
 
     <el-row class='row'>
       <el-col :span="3">

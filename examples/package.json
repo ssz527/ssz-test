@@ -14,14 +14,15 @@
     "lint": "eslint --ext .js,.vue src test/unit/specs test/e2e/specs"
   },
   "dependencies": {
+    "axios": "^0.17.1",
     "element-ui": "^2.0.3",
+    "hdmap": "git+http://gitlab/xiaxuanyin/UI-mapcomponent.git#buildv3",
     "vue": "^2.5.2",
     "vue-router": "^3.0.1",
-    "hdmap": "git+http://gitlab/xiaxuanyin/UI-mapcomponent.git#master"
+    "xlsx": "^0.12.12"
   },
   "devDependencies": {
     "autoprefixer": "^7.1.2",
-    "axios": "^0.17.1",
     "babel-core": "^6.22.1",
     "babel-eslint": "^7.1.1",
     "babel-loader": "^7.1.1",

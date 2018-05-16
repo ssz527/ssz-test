@@ -1,8 +1,10 @@
 (function (global, factory) {
-	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('myopenlayers')) :
-	typeof define === 'function' && define.amd ? define(['myopenlayers'], factory) :
-	(global.hdmap = factory());
-}(this, (function () { 'use strict';
+	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('myopenlayers'), require('perfect-scrollbar')) :
+	typeof define === 'function' && define.amd ? define(['myopenlayers', 'perfect-scrollbar'], factory) :
+	(global.hdmap = factory(null,global.PerfectScrollbar));
+}(this, (function (myopenlayers,PerfectScrollbar) { 'use strict';
+
+PerfectScrollbar = PerfectScrollbar && PerfectScrollbar.hasOwnProperty('default') ? PerfectScrollbar['default'] : PerfectScrollbar;
 
 /**
  * filename: commonConfig.js
@@ -10,6 +12,10 @@
  * introduction: 这里保存一些地图的常用配置信息，一些默认的样式等
  */
 // import cameraImg from '@/assets/images/u349'
+
+var warnLogTag = '[mapEngine warn]';
+var infoLogTag = '[mapEngine info]';
+
 
 function commonConfig() {
   // gis地图情况下的一些通用配置
@@ -19,6 +25,64 @@ function commonConfig() {
     mapSatUrl: 'http://shangetu1.map.bdimg.com/it/u=x={x};y={y};z={z};v=009;type=sate&fm=46&app=webearth2&v=009&udt=20171115',
     SatUrl: 'http://online1.map.bdimg.com/onlinelabel/?qt=tile&x={x}&y={y}&z={z}&styles=sl&p=1&scaler=1&udt=20171115',
     center: [116.40348, 39.923758]
+    // 设备层级对应的zindex 配置
+  };var layerZindex = {
+    // 摄像头图层
+    cameraLayer: { zindex: 8 },
+    // 音频设备图层
+    videoLayer: { zindex: 8 },
+    // 保安图层
+    guarderLayer: { zindex: 8 },
+    // 保洁图层
+    cleanerLayer: { zindex: 8 },
+    // 车辆设备图层
+    carLayer: { zindex: 8 },
+    // 报警图层
+    warningLayer: { zindex: 11 },
+    // 默认显示图层
+    commonLayer: { zindex: 8 },
+    // 区域显示图层
+    gisLayer: { zindex: 10 },
+    // 路线现实图层
+    lineLayer: { zindex: 10 },
+    // 电子围栏报警点图层
+    fenceLayer: { zindex: 11 },
+    // 摄像头统计图层
+    countCameraLayer: { zindex: 10 },
+    // 报警统计图层
+    countWarningLayer: { zindex: 10 },
+    // 广播统计图层
+    countBroadcastLayer: { zindex: 10 },
+    // 摄像头统计底图图层
+    cameraBase: { zindex: 9 },
+    // 报警统计底图图层
+    warningBase: { zindex: 9 },
+    // 广播统计底图图层
+    broadcastBase: { zindex: 9 },
+    // 机器人图层
+    robotLayer: { zindex: 12 },
+    // 电子指路牌图层
+    signpostLayer: { zindex: 12 },
+    // 广播图层
+    broadcastLayer: { zindex: 9 },
+    // 点位报警图层
+    markerWarnLayer: { zindex: 12 },
+    // 住户图层
+    households: { zindex: 9 },
+    // 访客图层
+    visitor: { zindex: 9 },
+    // 陌生人图层
+    stranger: { zindex: 9 },
+    // 门禁图层
+    control: { zindex: 9 },
+    // 车闸图层
+    brake: { zindex: 9 },
+    // 人行道闸图层
+    gates: { zindex: 9 },
+    // 电梯图层
+    elevator: { zindex: 9 },
+    // 地锁图层
+    lock: { zindex: 9 }
 
     /**
      * 鼠标移动到区域时显示的样式
@@ -48,8 +112,8 @@ function commonConfig() {
   };
 
   var setAreaStyle = function setAreaStyle(styleObj) {
-    var fillColor = styleObj && styleObj.fillColor ? styleObj.fillColor : '';
-    var strokeColor = styleObj && styleObj.strokeColor ? styleObj.strokeColor : '';
+    var fillColor = styleObj && styleObj.fillColor ? styleObj.fillColor : 'rgba(0,0,0,0)';
+    var strokeColor = styleObj && styleObj.strokeColor ? styleObj.strokeColor : 'rgba(0,0,0,0)';
     var strokeWidth = styleObj && styleObj.strokeWidth ? styleObj.strokeWidth : '2';
     var lineDash = styleObj && styleObj.lineDash ? styleObj.lineDash : [5, 10];
     var rotation = styleObj && styleObj.rotation ? styleObj.rotation : 0;
@@ -92,7 +156,7 @@ function commonConfig() {
     var scale = styleObj && styleObj.scale ? styleObj.scale : 1;
     var opacity = styleObj && styleObj.opacity ? styleObj.opacity : 1;
     var rotation = styleObj && styleObj.rotation ? styleObj.rotation : 0;
-    var anchor = styleObj && styleObj.anchor ? styleObj.anchor : [0.5, 0.5];
+    var anchor = styleObj && styleObj.anchor ? styleObj.anchor : [0.5, 1];
     return new ol.style.Style({
       image: new ol.style.Icon(
       /** @type {olx.style.IconOptions} */{
@@ -128,6 +192,7 @@ function commonConfig() {
   /**
    * 统计摄像头个数样式
    * @param {Object} markerInfo 点位信息
+   * @param {Object} style 自定义样式，选填
    */
   var getCountCameraFeatureStyle = function getCountCameraFeatureStyle(markerInfo, style) {
     var offsetX, offsetY, anchor, fontsize;
@@ -178,6 +243,7 @@ function commonConfig() {
   /**
    * 统计报警个数样式
    * @param {Object} markerInfo 点位信息
+   * @param {Object} style 自定义样式，选填
    */
   var getCountWarningFeatureStyle = function getCountWarningFeatureStyle(markerInfo, style) {
     var offsetX, offsetY, anchor, fontsize;
@@ -225,6 +291,7 @@ function commonConfig() {
   /**
    * 统计广播个数样式
    * @param {Object} markerInfo 点位信息
+   * @param {Object} style 自定义样式，选填
    */
   var getCountBroadcastFeatureStyle = function getCountBroadcastFeatureStyle(markerInfo, style) {
     var offsetX, offsetY, anchor, fontsize;
@@ -311,12 +378,14 @@ function commonConfig() {
 
   /**
    * 获取巡更路线正常样式
+   * @param {Object} 颜色对象 { color: '#f39826', width: 8 } 选填
    * @return {Object} 巡更路线正常样式对象
    */
-  var getNormalRouteStyle = function getNormalRouteStyle() {
+  var getNormalRouteStyle = function getNormalRouteStyle(obj) {
+    var curColor = obj ? obj.color : '#7740dc';
     return new ol.style.Style({
       stroke: new ol.style.Stroke({
-        color: '#7740dc',
+        color: curColor,
         width: 8
       })
     });
@@ -383,6 +452,7 @@ function commonConfig() {
    * 消除巡更路线报警动画样式
    * @param {Object} map 地图对象
    * @param {Object} lineInfo 线路参数
+   * @param {Object} obj 颜色对象 { color: '#f39826', width: 8 } 选填
    * 线路参数示例
    * {
    *  id: '111' 线路id
@@ -391,12 +461,23 @@ function commonConfig() {
    *  borderPoints: [[42.5, 94.9375], [41.5, 33.9375]......]
    * }
    */
-  var warnRouteCancel = function warnRouteCancel(map, lineInfo) {
+  var warnRouteCancel = function warnRouteCancel(map, lineInfo, obj) {
     var timer = map.lineTimer[lineInfo.id];
     if (timer) {
       clearInterval(timer);
-      map.updateLine(lineInfo, getNormalRouteStyle());
+      if (obj) {
+        map.updateLine(lineInfo, getNormalRouteStyle(obj));
+      } else {
+        map.updateLine(lineInfo, getNormalRouteStyle());
+      }
     }
+  };
+  /**
+   * 获取层级对应的zindex
+   * @param {String} layerkey 层级id
+   */
+  var getLayerZindex = function getLayerZindex(layerkey) {
+    return layerZindex[layerkey];
   };
   return {
     gisConfig: gisConfig,
@@ -413,7 +494,8 @@ function commonConfig() {
     getOfflineRouteStyle: getOfflineRouteStyle,
     getWarningRouteStyle: getWarningRouteStyle,
     getRouteStyleAnimation: getRouteStyleAnimation,
-    warnRouteCancel: warnRouteCancel
+    warnRouteCancel: warnRouteCancel,
+    getLayerZindex: getLayerZindex
   };
 }
 
@@ -704,7 +786,7 @@ function getDefaultCallback(map, eventType) {
 function getTargetMap(e) {
   return hdmap.mapManager[e.map.ol_uid];
 }
-
+var curZoom = 0;
 var eventRegister = {
   /**
    * eventType: singleclick
@@ -729,7 +811,7 @@ var eventRegister = {
         features = features.filter(function (item) {
           return item.imgUrl && item.markerType !== 'car';
         });
-        if (features.length > 1) {
+        if (features.length > 1 && feature instanceof ol.DevFeature) {
           tarMap.popupMultipoint(e.coordinate, features);
           return;
         }
@@ -740,18 +822,17 @@ var eventRegister = {
             featureType = 'common';
           }
           var callback = tarMap.eventCallback.singleclick[featureType];
+          var backEventObj = {
+            feature: feature.extProperties,
+            eventType: 'singleclick',
+            coordinate: e.coordinate,
+            layerKey: feature.layerKey,
+            mapEvent: e
+          };
           if (callback) {
-            callback.call(this, {
-              feature: feature.extProperties,
-              eventType: 'singleclick',
-              coordinate: e.coordinate
-            });
+            callback.call(this, backEventObj);
           } else if (defaultCallback !== null) {
-            defaultCallback.call(this, {
-              feature: feature.extProperties,
-              eventType: 'singleclick',
-              coordinate: e.coordinate
-            });
+            defaultCallback.call(this, backEventObj);
           }
         }
       } else {
@@ -760,87 +841,12 @@ var eventRegister = {
           defaultCallback.call(this, {
             feature: null,
             eventType: 'singleclick',
-            coordinate: e.coordinate
+            coordinate: e.coordinate,
+            layerKey: null,
+            mapEvent: e
           });
         }
-        // tarMap.closePopup();
       }
-    }
-  },
-  /**
-   * eventType: pointerdrag
-   * 鼠标拖动开始事件的默认处理函数
-   * @param {event} e 事件
-   */
-  // pointerdrag: function (e) {
-  //   // TODO 默认事件处理，需要判断是否编辑状态，如果是编辑状态，需要记录拖动的点位，在结束时做对应的处理
-  //   var tarMap = getTargetMap(e)
-  //   // 如果没有处于编辑状态，退出事件处理
-  //   if (!tarMap.getMapEditState()) { // getDragState
-  //     return
-  //   }
-  //   // 获取到事件点位的feature对象
-  //   var feature = e.map.forEachFeatureAtPixel(e.pixel, function (
-  //     feature,
-  //     layer
-  //   ) {
-  //     return feature
-  //   })
-  //   if (tarMap.eventCallback.pointerdrag.default !== null) {
-  //     tarMap.eventCallback.pointerdrag.default.call(this, {
-  //       feature: feature,
-  //       eventType: 'pointerdrag',
-  //       coordinate: e.coordinate
-  //     })
-  //   }
-  // },
-  /**
-   * eventType: dragend
-   * 拖动开始事件的默认处理函数
-   * @param {event} e 事件
-   */
-  dragstart: function dragstart(e) {
-    // TODO 默认事件处理，需要判断是否编辑状态，如果是编辑状态，需要记录拖动的点位，在结束时做对应的处理
-    var tarMap = getTargetMap(e);
-    // 如果没有处于编辑状态，退出事件处理
-    if (!tarMap.getMapEditState()) {
-      // getDragState
-      return;
-    }
-    // 获取到事件点位的feature对象
-    var feature = e.map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
-      return feature;
-    });
-    if (tarMap.eventCallback.dragstart.default !== null) {
-      tarMap.eventCallback.dragstart.default.call(this, {
-        feature: feature,
-        eventType: 'dragstart',
-        coordinate: e.coordinate
-      });
-    }
-  },
-  /**
-   * eventType: dragend
-   * 拖动结束事件的默认处理函数
-   * @param {event} e 事件
-   */
-  dragend: function dragend(e) {
-    // TODO 默认事件处理，需要判断是否编辑状态，如果是编辑状态，结束时需要变动对应点位
-    var tarMap = getTargetMap(e);
-    // 如果没有处于编辑状态，退出事件处理
-    if (!tarMap.getDragState()) {
-      return;
-    }
-    // 获取到事件点位的feature对象
-    var feature = e.map.forEachFeatureAtPixel(e.pixel, function (feature, layer) {
-      return feature;
-    });
-    if (tarMap.eventCallback.dragend.default !== null) {
-      tarMap.eventCallback.dragend.default.call(this, {
-        feature: feature,
-        eventType: 'dragend',
-        coordinate: e.coordinate
-      });
     }
   },
   /**
@@ -848,7 +854,6 @@ var eventRegister = {
    * 点位选中事件监听
    * @param {event} e 事件
    */
-
   selected: function selected(e) {
     // TODO 选择点位事件处理
     var tarMap = getTargetMap(e);
@@ -952,6 +957,68 @@ var eventRegister = {
         coordinate: e.coordinate
       });
     }
+  },
+  /**
+   * eventType: zoomChange
+   * 地图等级变化事件监听
+   * @param {event} e 事件
+   */
+  zoomChange: function zoomChange(e) {
+    var tarMap = hdmap.mapManager[this.ol_uid];
+    var defaultCallback = getDefaultCallback(tarMap, 'zoomChange');
+    var zoom = tarMap.getZoom();
+    var nowZoom = parseInt(zoom);
+    // 地图缩放时，控制层级的显示、隐藏
+    if (curZoom !== nowZoom) {
+      curZoom = nowZoom;
+      var layerArr = tarMap.outterLayers;
+      for (var item in layerArr) {
+        var layer = layerArr[item];
+        var lkey = layer.layerKey;
+        var zl = lkey.split('_');
+        if (zl[1]) {
+          if (curZoom >= parseInt(zl[1]) && layer.getVisibleFlag()) {
+            tarMap.setLayerVisible(lkey, true);
+          } else {
+            tarMap.setLayerVisible(lkey, false);
+          }
+        }
+      }
+    }
+    if (defaultCallback !== null) {
+      defaultCallback.call(this, {
+        zoom: zoom,
+        eventType: 'zoomChange'
+      });
+    }
+  },
+  /**
+   * eventType: movestart
+   * 地图等级变化事件监听
+   * @param {event} e 事件
+   */
+  movestart: function movestart(e) {
+    var tarMap = getTargetMap(e);
+    var defaultCallback = getDefaultCallback(tarMap, 'movestart');
+    if (defaultCallback !== null) {
+      defaultCallback.call(this, {
+        eventType: 'movestart'
+      });
+    }
+  },
+  /**
+   * eventType: moveend
+   * 地图等级变化事件监听
+   * @param {event} e 事件
+   */
+  moveend: function moveend(e) {
+    var tarMap = getTargetMap(e);
+    var defaultCallback = getDefaultCallback(tarMap, 'moveend');
+    if (defaultCallback !== null) {
+      defaultCallback.call(this, {
+        eventType: 'moveend'
+      });
+    }
   }
 };
 
@@ -1000,19 +1067,41 @@ var layerMap = {
   // 电子指路牌图层
   signpost: 'signpostLayer',
   // 广播图层
-  broadcast: 'broadcastLayer'
-
+  broadcast: 'broadcastLayer',
+  // 点位报警图层
+  warnMarker: 'warnMarkerLayer',
+  // 住户图层
+  households: 'householdsLayer',
+  // 访客图层
+  visitor: 'visitorLayer',
+  // 陌生人图层
+  stranger: 'strangerLayer',
+  // 门禁图层
+  control: 'controlLayer',
+  // 车闸图层
+  brake: 'brakeLayer',
+  // 人行道闸图层
+  gates: 'gatesLayer',
+  // 电梯图层
+  elevator: 'elevatorLayer',
+  // 地锁图层
+  lock: 'lockLayer'
   /**
-   * getLayerKeyByType
    * 根据feature的type获取对应所在图层的名称
-   * @param {String} type
+   * @param {String} type 点位类型
+   * @param {int|undefine} zoomLevel 点位需要在哪个缩放等级显示
    */
-};function getLayerKeyByType(type) {
+};function getLayerKeyByType(type, zoomLevel) {
   // TODO 这里可能需要根据类型的数据进行判断获取，暂时用map方式存取
-  if (layerMap[type]) {
-    return layerMap[type];
+  if (zoomLevel) {
+    // 点位的类型，如果有点位显示等级，则类型要加上等级
+    return type + 'Layer_' + zoomLevel;
   } else {
-    return layerMap.common;
+    if (layerMap[type]) {
+      return layerMap[type];
+    } else {
+      return layerMap.common;
+    }
   }
 }
 function getLayerMap() {
@@ -1036,10 +1125,9 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
  * introduction: 封装openlayers 3.20.0版本做的一个web GIS 引擎
  */
 
-// TODO: 需要对HDMap上的函数名称跟对外暴露接口进行统一
 /**
  * 弹窗控制器
-*/
+ */
 var popupCtrl = {
   curZIndex: 1,
   curPopNum: 0,
@@ -1092,11 +1180,15 @@ var popupCtrl = {
   this.popup_closestatus = false;
   // 手动添加的气泡
   this._overlays = [];
+  // 点位报警气泡
+  this._warnOverlays = [];
   // 存储区域报警定时器
   this.areaTimer = {};
   // 存储电子围栏报警定时器
   this.lineTimer = {};
   this._outPopupWarp = 'hdmap-outterPopup';
+  // 地图分辨率集合，与zoom一一对应
+  this.mapResolutions = [];
   /*
     自己添加的图层
     设计为不同类型的点位放在不同的图层上面，方便批量控制的实现
@@ -1108,12 +1200,12 @@ var popupCtrl = {
     singleclick: {
       default: null
     },
-    dragstart: {
-      default: null
-    },
-    dragend: {
-      default: null
-    },
+    // dragstart: {
+    //   default: null
+    // },
+    // dragend: {
+    //   default: null
+    // },
     selected: {
       default: null
     },
@@ -1124,6 +1216,15 @@ var popupCtrl = {
       default: null
     },
     pointerdrag: {
+      default: null
+    },
+    zoomChange: {
+      default: null
+    },
+    movestart: {
+      default: null
+    },
+    moveend: {
       default: null
     }
     // 事件监听的key管理对象
@@ -1137,7 +1238,6 @@ var popupCtrl = {
   // 初始化地图
   this.mapInit(options);
   // 将初始化的地图对象放到mapManager对象中
-  // hdmap.mapManager[options.domId] = this
   hdmap.mapManager[this.getMapUid()] = this;
   // 注册默认监听函数
   this.regDefaulEventCallback();
@@ -1152,19 +1252,19 @@ var popupCtrl = {
 function optionsVerify(options) {
   if (!options.popupDom) {
     options.popupDom = {
-      popup: 'popup',
-      popupcloser: 'popup-closer',
-      popupcontent: 'popup-content'
+      popup: options.domId + '-popup',
+      popupcloser: options.domId + '-popup-closer',
+      popupcontent: options.domId + '-popup-content'
     };
+  }
+  if (!options.arcAngle) {
+    options.arcAngle = 0;
   }
   if (!options.scale) {
     options.scale = 1;
   }
   if (!options.scaleType) {
-    options.scaleType = '1';
-  }
-  if (!options.centerGPS) {
-    options.centerGPS = [110.121212, 45.121121];
+    options.scaleType = 0;
   }
   if (!options.gisEngine) {
     options.gisEngine = 'baidu';
@@ -1175,12 +1275,53 @@ function optionsVerify(options) {
     options.satUrl = hdmap.commonConfig.gisConfig.SatUrl;
   } else if (options.gisEngine === 'bitmap') {
     if (!options.mapUrl) {
-      console.warn('bitmap without picture url');
+      console.warn(warnLogTag + 'bitmap without picture url');
       return false;
     }
     if (!options.sizeH || !options.sizeW) {
-      console.warn('bitmap without size of the picture');
+      console.warn(warnLogTag + 'bitmap without size of the picture');
       return false;
+    }
+  } else if (options.gisEngine === 'tile') {
+    if (!options.mapUrl) {
+      console.warn(warnLogTag + 'tilemap param without tile service url');
+      return false;
+    }
+    if (!options.sizeH || !options.sizeW) {
+      console.warn(warnLogTag + 'tilemap param without extent of the map');
+      return false;
+    }
+    if (!options.centerGPS) {
+      console.warn(warnLogTag + 'tilemap param without centerGPS');
+      return false;
+    }
+    if (undefined === options.maxZoom) {
+      options.maxZoom = 6;
+    }
+    if (undefined === options.minZoom) {
+      options.minZoom = 0;
+    }
+    if (!options.zoom) {
+      options.zoom = 2;
+    }
+    if (!options.rangeCoefficient || options.rangeCoefficient < 1) {
+      console.warn(warnLogTag + 'illegal rangeCoefficient, will use default value 2');
+      options.rangeCoefficient = 2;
+    }
+    if (!options.mapMaxResolution) {
+      console.warn(warnLogTag + 'illegal mapMaxResolution, will use default value 1');
+      options.mapMaxResolution = 1;
+    }
+    if (undefined === options.tileMinZoom) {
+      console.warn(warnLogTag + 'illegal tileMinZoom, will set options.minZoom to tileMinZoom');
+      options.tileMinZoom = options.minZoom;
+    }
+    if (undefined === options.tileMaxZoom) {
+      console.warn(warnLogTag + 'illegal tileMaxZoom, will set options.maxZoom to tileMaxZoom');
+      options.tileMaxZoom = options.maxZoom;
+    }
+    if (!options.moveTolerance || typeof options.moveTolerance !== 'number') {
+      options.moveTolerance = 5;
     }
   }
   return true;
@@ -1195,6 +1336,7 @@ HDMap.prototype.mapInit = function (options) {
   if (optionsVerify(options) === false) {
     return;
   }
+  this.copyAttr(this.mapConfig, options);
   this.popupInit(options.popupDom);
   if (options.gisEngine === 'baidu') {
     this.initBaiduMap(options);
@@ -1202,14 +1344,102 @@ HDMap.prototype.mapInit = function (options) {
     this.initBitmap(options);
   } else if (options.gisEngine === 'gaode') {
     this.initGaodeMap(options);
-  } else {
-    return;
+  } else if (options.gisEngine === 'tile') {
+    this.initTileMap(options);
   }
-  this.copyAttr(this.mapConfig, options);
-  // 这里只能在初始化时传入区域信息，并添加到gisLayer上
-  // if (options.gisLayer && options.gisLayer.length > 0) {
-  //   this.initGisLayer(options.gisLayer);
-  // }
+};
+
+/**
+ * 初始化切片地图函数
+ * HDMap.prototype.initTileMap
+ * @param {Object} options
+  参数示例:
+  var options = {
+    // 必传参数
+    gisEngine:"tile",
+    sizeW:13623,
+    sizeH:9796,
+    domId:'map',
+    mapUrl:"http://zc200008pc1.hdsc.com/hdyj/",
+    maxZoom: 10,
+    minZoom: 3,
+    tileMinZoom: 0, // 切片时的最小等级
+    tileMaxZoom: 6, // 切片时的最大等级
+    mapMaxResolution: 1, // 地图最大分辨率
+    centerGPS:[113.619942,23.304629],
+    scale: 1.21,
+    scaleType: 1,
+    arcAngle: 1.2, //弧度值
+    // 可选参数
+    center: [0,0],
+    rangeCoefficient: 2, // 可视区域系数， 大于1的值，将会往左右各按系数延伸扩展
+    moveTolerance: 5 // 此参数优化点击体验，当移动地图超过此值的像素移动时，才认为是拖动事件，否则认为是click
+  };
+ */
+HDMap.prototype.initTileMap = function (options) {
+  var mapExtent = [0.00000000, -options.sizeH, options.sizeW, 0.00000000];
+  var minZoom = options.minZoom;
+  var maxZoom = options.maxZoom;
+  var mapMinZoom = options.tileMinZoom;
+  var mapMaxZoom = options.tileMaxZoom;
+  var mapMaxResolution = options.mapMaxResolution;
+  var tileExtent = [0.00000000, -options.sizeH, options.sizeW, 0.00000000];
+
+  for (var z = 0; z <= mapMaxZoom; z++) {
+    this.mapResolutions.push(Math.pow(2, mapMaxZoom - z) * mapMaxResolution);
+  }
+
+  var mapTileGrid = new ol.tilegrid.TileGrid({
+    extent: tileExtent,
+    minZoom: mapMinZoom,
+    resolutions: this.mapResolutions
+  });
+  var tileLayer = new ol.layer.Tile({
+    source: new ol.source.XYZ({
+      projection: 'PIXELS',
+      tileGrid: mapTileGrid,
+      url: options.mapUrl + '{z}/{x}/{y}.png'
+    })
+  });
+
+  this.layers.push(tileLayer);
+
+  this._map = new ol.Map({
+    // 初始化map
+    logo: false,
+    target: options.domId,
+    view: new ol.View({
+      projection: ol.proj.get('PIXELS'),
+      extent: mapExtent,
+      maxResolution: mapTileGrid.getResolution(minZoom),
+      zoom: options.zoom,
+      maxZoom: maxZoom,
+      minZoom: minZoom
+    }),
+    overlays: [this._overlay],
+    layers: this.layers,
+    interactions: ol.interaction.defaults({
+      dragPan: this.dragPan,
+      // 去除两个手指旋转地图--针对移动端
+      pinchRotate: false
+    }),
+    controls: ol.control.defaults({
+      attribution: this.attribution,
+      zoom: this.controlZoom
+    }),
+    moveTolerance: options.moveTolerance
+  });
+  this._map.getView().fit(mapExtent, this._map.getSize());
+  this.setZoom(options.zoom);
+
+  // 设置可视区域范围
+  var rangeCoefficient = options.rangeCoefficient;
+  this.mapConfig.viewRange = {
+    minX: -(rangeCoefficient - 1) * options.sizeW,
+    maxX: rangeCoefficient * options.sizeW,
+    minY: -rangeCoefficient * options.sizeH,
+    maxY: (rangeCoefficient - 1) * options.sizeH
+  };
 };
 
 /**
@@ -1257,7 +1487,6 @@ HDMap.prototype.mapInit = function (options) {
     sizeW:1024,
     sizeH:986,
     domId:'map',
-    projection:'EPSG:3857',
     mapUrl:"map.png",
     maxZoom:3,
     center:[113.619942,23.304629]
@@ -1563,7 +1792,6 @@ HDMap.prototype.createPopup = function (popupDom) {
   document.body.appendChild(this.createNode('wrap', 'div', 'id', popupDom.popup, 'hdmap-ol-popup'));
   this.popup_container = document.getElementById(popupDom.popup);
   this.toggleClassName(this.popup_container, 'hdmap-list-popup', 'hdmap-ol-popup');
-
   // 创建气泡关闭div
   if (!this.popup_closestatus) {
     this.popup_container.appendChild(this.createNode('popcloser', 'a', 'id', popupDom.popupcloser));
@@ -1573,6 +1801,7 @@ HDMap.prototype.createPopup = function (popupDom) {
   // 创建气泡内容div
   this.popup_container.appendChild(this.createNode('popcontent', 'div', 'id', popupDom.popupcontent));
   this.popup_content = document.getElementById(popupDom.popupcontent);
+  this.popup_container.appendChild(this.createNode('popcontent', 'div', 'id', popupDom.popupcontent));
 };
 
 // 因为ol3的特性，气泡在地图上由一组div持有，所以这里初始化
@@ -1621,7 +1850,7 @@ HDMap.prototype.saveOutterPopup = function (popIdList) {
           popWrap.appendChild(popItem);
           popwrap.parentNode.removeChild(popwrap);
         } else {
-          console.warn('popId is undefined');
+          console.warn(warnLogTag + 'popId is undefined');
         }
       }
     }
@@ -1642,43 +1871,49 @@ HDMap.prototype.saveOutterPopup = function (popIdList) {
  *    markerName:new Date().valueOf(),    //点位的名字  选填
  *    imgUrl:"arrow.png",   //点位展示的图片的url，必填
  *    size:[32,32]    //图片的大小
+ *    zoomLevel: 2 Number类型
  *  }
  *  styleObj: {     选填
  *    color: 'red' 颜色
  *    scale: '1' 缩放
  *    opacity: '1' 透明度
  *    rotation: Math.PI 弧度
- *    anchor: 位置偏移 ，默认值是[0.5,0.5]
+ *    anchor: 位置偏移 ，默认值是[0.5,1]
  *  }
  */
-HDMap.prototype.addMarker = function (markerInfo, styleObj) {
+HDMap.prototype.addMarker = function (markerInfo, styleObj, layerkey) {
+  // 参数验证
   if (!markerInfo.position || markerInfo.position.length !== 2) {
-    console.warn('addMarker Error : marker position can not be empty');
+    console.warn(warnLogTag + 'addMarker Error : marker position can not be empty');
     return null;
   }
-  var layerKey = layerManager.getLayerKeyByType(markerInfo.markerType);
+  if (!this.isInTileMapViewArea(markerInfo.position)) {
+    console.warn(warnLogTag + 'addMarker Error : marker position is not in tile map viewArea');
+    return null;
+  }
+  if (!markerInfo.id) {
+    console.warn(warnLogTag + 'addMarker Error : id is required');
+    return null;
+  }
+  if (markerInfo.zoomLevel && (markerInfo.zoomLevel > this.mapConfig.maxZoom || markerInfo.zoomLevel < this.mapConfig.minZoom)) {
+    console.warn(warnLogTag + 'addMarker Error : zoomLevel is not between maxZoom & minZoom');
+    return null;
+  }
+  var layerKey = layerkey !== undefined ? layerkey : layerManager.getLayerKeyByType(markerInfo.markerType, markerInfo.zoomLevel);
+
   var layer = this.getLayerByKey(layerKey);
   if (layer === undefined || layer === null) {
     // 图层不存在，则进行图层创建的操作
     layer = this.addLayerByLayerKey(layerKey);
-  } else {
-    if (!markerInfo.id) {
-      markerInfo.id = new Date().valueOf();
-    }
-    var feature = this.getMarkerBylayerKey(markerInfo.id, layerKey);
-    if (feature) {
-      // 点位在要添加的图层上已存在，直接返回该点对象
-      return feature;
-    }
   }
-  var iconFeature = new ol.DevFeature({
-    geometry: new ol.geom.Point([markerInfo.position[0], markerInfo.position[1]]),
-    name: markerInfo.markerName,
-    population: 4000,
-    rainfall: 500
-  }, markerInfo, layerKey);
+  var feature = this.getMarkerBylayerKey(markerInfo.id, layerKey);
+  if (feature) {
+    // 点位在要添加的图层上已存在，直接返回该点对象
+    this.updateMarker(markerInfo, styleObj, layerkey);
+    return feature;
+  }
+  var iconFeature = createFeature(markerInfo, layerKey);
   iconFeature.setStyle(hdmap.commonConfig.getFeatureStyle(markerInfo, styleObj));
-  iconFeature.setId(markerInfo.id);
   layer.getSource().addFeature(iconFeature);
   return iconFeature;
 };
@@ -1688,10 +1923,10 @@ HDMap.prototype.addMarker = function (markerInfo, styleObj) {
  * @param {Object} markerInfo 统计图标点信息
  * 参数示例：
  *   {
- *     id: 1,  //唯一确定的主键 (必填)
+ *    id: 1,  //唯一确定的主键 (必填)
  *    markerType: 'countCamera' // 统计点点位类型 countCamera | countWarn |countBroadcast 必填
  *    position: [20, 30], //点位的坐标，如果添加在光栅图中，[0,0] 这种类型的数组即可，元素0为x，元素1为y
- *     name: 'aaa',    //点位的名字  选填
+ *    name: 'aaa',    //点位的名字  选填
  *    url: 小图标   必填
  *    baseUrl: 背景图片   必填
  *    cameraNum: '10' String 必填 与 markerType 对应出现
@@ -1712,9 +1947,7 @@ HDMap.prototype.addCountMarker = function (markerInfo, style) {
       // 图层不存在，则进行图层创建的操作
       layer = this.addLayerByLayerKey(layerKey);
     }
-    var iconFeature = new ol.DevFeature({
-      geometry: new ol.geom.Point([markerInfo.position[0], markerInfo.position[1]])
-    }, markerInfo, layerKey);
+    var iconFeature = createFeature(markerInfo, layerKey);
     if (markerInfo.markerType === 'countCamera') {
       countStyle = hdmap.commonConfig.getCountCameraFeatureStyle(markerInfo, style);
     } else if (markerInfo.markerType === 'countWarning') {
@@ -1723,10 +1956,9 @@ HDMap.prototype.addCountMarker = function (markerInfo, style) {
       countStyle = hdmap.commonConfig.getCountBroadcastFeatureStyle(markerInfo, style);
     }
     iconFeature.setStyle(countStyle);
-    iconFeature.setId(markerInfo.id);
     layer.getSource().addFeature(iconFeature);
   } else {
-    console.warn('markerType is error');
+    console.warn(warnLogTag + 'markerType is error');
   }
 };
 
@@ -1742,9 +1974,7 @@ HDMap.prototype.addBgLayer = function (markerInfo) {
     // 图层不存在，则进行图层创建的操作
     layer = this.addLayerByLayerKey(layerKey);
   }
-  var iconBgFeature = new ol.CountFeature({
-    geometry: new ol.geom.Point([markerInfo.position[0], markerInfo.position[1]])
-  }, markerInfo, layerKey);
+  var iconBgFeature = createFeature(markerInfo, layerKey);
   if (markerInfo.markerType === 'countWarning') {
     iconBgFeature.setStyle(hdmap.commonConfig.getCountWarningStyle(markerInfo));
   } else if (markerInfo.markerType === 'countCamera') {
@@ -1752,7 +1982,6 @@ HDMap.prototype.addBgLayer = function (markerInfo) {
   } else if (markerInfo.markerType === 'countBroadcast') {
     iconBgFeature.setStyle(hdmap.commonConfig.getCountDefaultStyle(markerInfo));
   }
-  iconBgFeature.setId(markerInfo.id);
   layer.getSource().addFeature(iconBgFeature);
 };
 
@@ -1798,34 +2027,70 @@ HDMap.prototype.removeCountMarkers = function (type) {
  * @param {Object} markerInfo
  * 参数示例：
  *   {
- *     id: 1,  //唯一确定的主键 (必填)
+ *    id: 1,  //唯一确定的主键 (必填)
  *    markerType: 'camera' // 点位的类型，决定该点添加的图层，如果不填写，则添加到commonLayer图层上面
  *    position:ol.proj.transform([113.61994199999998, 23.304629000000006],'EPSG:4326', 'EPSG:3857'),
  *      //点位的坐标，示例中是添加在百度地图中的。如果添加在光栅图中，[0,0] 这种类型的数组即可，元素0为x，元素1为y
- *     name:new Date().valueOf(),    //点位的名字  选填
- *     imgUrl:"arrow.png",   //点位展示的图片的url，必填
+ *    name:new Date().valueOf(),    //点位的名字  选填
+ *    imgUrl:"arrow.png",   //点位展示的图片的url，必填
  *    imgSize:[32,32]    //图片的大小
  *   }
  */
-HDMap.prototype.addMarkerByGPS = function (markerInfo) {
-  markerInfo.GPSInfo = markerInfo.position;
-  markerInfo.position = this.transfromWGSToBitMap(markerInfo.position);
-  this.addMarker(markerInfo);
+HDMap.prototype.addMarkerByGPS = function (markerInfo, styleObj) {
+  if (this.mapConfig.scaleType === 1 || this.mapConfig.scaleType === '1') {
+    markerInfo.GPSInfo = markerInfo.position;
+    markerInfo.position = this.transfromWGSToBitMap(markerInfo.position);
+    this.addMarker(markerInfo, styleObj);
+  } else {
+    console.warn(warnLogTag + 'ScaleType is error');
+  }
+};
+
+/**
+ * HDMap.prototype.addMarkersByGPS
+ * 批量通过GPS新增点位函数
+ * @param {Array} markerList
+ * @param {Object} styleObj
+ *  styleObj: {     选填
+ *    color: 'red' 颜色
+ *    scale: '1' 缩放
+ *    opacity: '1' 透明度
+ *    rotation: Math.PI 弧度
+ *    anchor: 位置偏移 ，默认值是[0.5,0.5]
+ *  }
+ */
+HDMap.prototype.addMarkersByGPS = function (markerList, styleObj) {
+  if (!(markerList instanceof Array)) {
+    console.warn(warnLogTag + 'addMarkersByGPS require an Array instance argument');
+    return;
+  }
+  for (var i = 0; i < markerList.length; i++) {
+    var marker = markerList[i];
+    this.addMarkerByGPS(marker, styleObj);
+  }
 };
 
 /**
  * HDMap.prototype.addMarkers
  * 批量新增点位函数，可以处理批量点位列表
  * @param {Array} markerList
+ * @param {Object} styleObj
+ *  styleObj: {     选填
+ *    color: 'red' 颜色
+ *    scale: '1' 缩放
+ *    opacity: '1' 透明度
+ *    rotation: Math.PI 弧度
+ *    anchor: 位置偏移 ，默认值是[0.5,0.5]
+ *  }
  */
-HDMap.prototype.addMarkers = function (markerList, styleObj) {
+HDMap.prototype.addMarkers = function (markerList, styleObj, layerkey) {
   if (!(markerList instanceof Array)) {
-    console.warn('addMarkers require an Array instance argument');
+    console.warn(warnLogTag + 'addMarkers require an Array instance argument');
     return;
   }
   for (var i = 0; i < markerList.length; i++) {
     var marker = markerList[i];
-    this.addMarker(marker, styleObj);
+    this.addMarker(marker, styleObj, layerkey);
   }
 };
 /**
@@ -1835,7 +2100,7 @@ HDMap.prototype.addMarkers = function (markerList, styleObj) {
  */
 HDMap.prototype.hideMarkers = function (type) {
   var layerkey = layerManager.getLayerKeyByType(type);
-  this.setLayerVisible(layerkey, false);
+  this.setLayerVisible(layerkey, false, false);
 };
 /**
  * HDMap.prototype.showMarkers
@@ -1844,7 +2109,7 @@ HDMap.prototype.hideMarkers = function (type) {
  */
 HDMap.prototype.showMarkers = function (type) {
   var layerkey = layerManager.getLayerKeyByType(type);
-  this.setLayerVisible(layerkey, true);
+  this.setLayerVisible(layerkey, true, true);
 };
 /**
  * 通过marker的id和图层名称移除marker
@@ -1855,7 +2120,7 @@ HDMap.prototype.showMarkers = function (type) {
 HDMap.prototype.removeMarkerBylayerKey = function (id, layerKey) {
   var layer = this.getLayerByKey(layerKey);
   if (!layer) {
-    console.warn('please give a legal layerkey');
+    console.warn(warnLogTag + 'please give a legal layerkey');
     return null;
   }
   var feature = layer.getSource().getFeatureById(id);
@@ -1865,7 +2130,7 @@ HDMap.prototype.removeMarkerBylayerKey = function (id, layerKey) {
 };
 
 /**
- *
+ * HDMap.prototype.removeMarker
  * @param {Object} markerInfo 点位信息
  * 参数示例：
  * {
@@ -1880,7 +2145,7 @@ HDMap.prototype.removeMarker = function (markerInfo) {
     if (layerKey && layerKey !== 'commonLayer') {
       var layer = this.getLayerByKey(layerKey);
       if (!layer) {
-        console.warn('can not find this layer:' + layerKey);
+        console.warn(warnLogTag + 'can not find this layer:' + layerKey);
       }
       var feature = layer.getSource().getFeatureById(markerInfo.id);
       if (feature) {
@@ -1888,7 +2153,7 @@ HDMap.prototype.removeMarker = function (markerInfo) {
       }
     }
   } else {
-    console.warn('markerInfo is error');
+    console.warn(warnLogTag + 'markerInfo is error');
   }
 };
 
@@ -1910,28 +2175,26 @@ HDMap.prototype.removeMarker = function (markerInfo) {
  *  opacity: 0.8 透明度
  * }
  */
-// TODO 怎么通过设备id获取到对应的markerInfo 待实现
-HDMap.prototype.updateMarker = function (markerInfo, styleObj) {
-  // TODO 通过marker， style 获取到id，layerkey，markerinfo，style
-  var layerkey = layerManager.getLayerKeyByType(markerInfo.markerType);
-  var marker;
+HDMap.prototype.updateMarker = function (markerInfo, styleObj, layerkey) {
+  // 通过marker， style 获取到id，layerkey，markerinfo，style
   if (!markerInfo.id) {
-    console.warn('markerId can not be empty');
-  } else {
-    marker = this.getMarkerBylayerKey(markerInfo.id, layerkey);
-    if (marker) {
-      var properties = marker.getExtProperties();
-      this.copyAttr(properties, markerInfo);
-      if (markerInfo.position) {
-        marker.getGeometry().setCoordinates(markerInfo.position);
-      }
-      if (markerInfo.markerName) {
-        marker.set('markerName', markerInfo.markerName);
-      }
-      marker.setStyle(hdmap.commonConfig.getFeatureStyle(markerInfo, styleObj));
-    } else {
-      console.warn('This point does not exist');
+    console.warn(warnLogTag + 'markerId can not be empty');
+    return null;
+  }
+  var layerKey = layerkey !== undefined ? layerkey : layerManager.getLayerKeyByType(markerInfo.markerType, markerInfo.zoomLevel);
+  var marker = this.getMarkerBylayerKey(markerInfo.id, layerKey);
+  if (marker) {
+    var properties = marker.getExtProperties();
+    this.copyAttr(properties, markerInfo);
+    if (markerInfo.position) {
+      marker.getGeometry().setCoordinates(markerInfo.position);
     }
+    if (markerInfo.markerName) {
+      marker.set('markerName', markerInfo.markerName);
+    }
+    marker.setStyle(hdmap.commonConfig.getFeatureStyle(markerInfo, styleObj));
+  } else {
+    console.warn(warnLogTag + 'This point does not exist');
   }
 };
 
@@ -1955,7 +2218,7 @@ HDMap.prototype.copyAttr = function (marker, attrs) {
 HDMap.prototype.getMarkerBylayerKey = function (id, layerKey) {
   var layer = this.getLayerByKey(layerKey);
   if (!layer) {
-    console.warn('please give a layerkey');
+    console.warn(warnLogTag + 'please give a layerkey');
     return null;
   }
   var feature = layer.getSource().getFeatureById(id);
@@ -2046,7 +2309,7 @@ HDMap.prototype.addArea = function (areaInfo, styleObj) {
  */
 HDMap.prototype.addAreas = function (areaList, styleObj) {
   if (!(areaList instanceof Array)) {
-    console.warn('addAreas require an Array instance argument');
+    console.warn(warnLogTag + 'addAreas require an Array instance argument');
     return;
   }
   for (var i = 0; i < areaList.length; i++) {
@@ -2066,7 +2329,7 @@ HDMap.prototype.updateArea = function (areaInfo, styleObject) {
   if (areaObj) {
     areaObj.setStyle(styleObject);
   } else {
-    console.warn('Warning of hdmap: not find the area');
+    console.warn(warnLogTag + 'Warning of hdmap: not find the area');
   }
 };
 
@@ -2118,7 +2381,7 @@ HDMap.prototype.showArea = function (areaInfo) {
  */
 HDMap.prototype.addLine = function (lineInfo, lineStyle) {
   if (!lineInfo || !lineInfo.borderPoints) {
-    console.warn('addLine require an lineInfo Object');
+    console.warn(warnLogTag + 'addLine require an lineInfo Object');
     return;
   }
   var lineLayer = this.outterLayers['lineLayer'];
@@ -2167,7 +2430,7 @@ HDMap.prototype.addLine = function (lineInfo, lineStyle) {
  */
 HDMap.prototype.addLines = function (LineList) {
   if (!(LineList instanceof Array)) {
-    console.warn('addLines require an Array instance argument');
+    console.warn(warnLogTag + 'addLines require an Array instance argument');
     return;
   }
   var list = [];
@@ -2191,7 +2454,7 @@ HDMap.prototype.updateLine = function (lineInfo, styleObject) {
   if (lineObj) {
     lineObj.setStyle(styleObject);
   } else {
-    console.warn('Warning of hdmap: not find the line');
+    console.warn(warnLogTag + 'Warning of hdmap: not find the line');
   }
 };
 /**
@@ -2221,24 +2484,37 @@ HDMap.prototype.getOutterLayers = function () {
   return this.outterLayers;
 };
 
-/*
-  在地图上添加图层
-  layerKey : 图层名，用于以后获取特定图层使用
-*/
+/**
+ * 在地图上添加图层
+ * @param {String} layerKey 图层名，用于以后获取特定图层使用
+ */
 HDMap.prototype.addLayerByLayerKey = function (layerKey) {
   if (layerKey) {
     // var hdmap = this
+    // let zd = 11
+    // let adarr = layerKey.split('_')
+    // let zdo = hdmap.commonConfig.getLayerZindex(adarr[0])
+    // if (zdo) zd = zdo.zindex
     var vectorSource = new ol.source.Vector({});
     var vectorLayer = new ol.layer.HDVector(layerKey, {
       source: vectorSource,
       // map: hdmap._map,//map 属性存在问题
-      zIndex: 11
+      zIndex: 11 // zd mod by zmj 2018-04-30 设备点位的层级待定
     });
     this._map.addLayer(vectorLayer);
     this.outterLayers[layerKey] = vectorLayer;
+    // 根据当前zoom，和层级显示所需等级对比，判断当前是否显示该层
+    var arr = layerKey.split('_');
+    if (arr[1]) {
+      var level = parseInt(arr[1]);
+      var z = this.getZoom();
+      var flag = true;
+      if (z < level) flag = false;
+      vectorLayer.setVisible(flag);
+    }
     return vectorLayer;
   } else {
-    console.warn('addLayer Error : layerKey can not be empty');
+    console.warn(warnLogTag + 'addLayer Error : layerKey can not be empty');
     return null;
   }
 };
@@ -2305,7 +2581,8 @@ HDMap.prototype.popupSetPlace = function (coordinate) {
  * popOption: {
  *  domId: 'camera', 必填
  *  visible: true， 必填
- *  arrow: true 选填 默认false，为true，不显示小箭头
+ *  arrow: true 选填 默认false显示箭头
+ *  type: 'cam' 选填 关闭某一类使用
  * } || popOption: 'camera'
  */
 HDMap.prototype.addPopup = function (popOption) {
@@ -2313,12 +2590,6 @@ HDMap.prototype.addPopup = function (popOption) {
     if (document.getElementById(popOption)) {
       var wrapperDom = this.createNode('wrapperDom', 'div', 'id', popOption + '-wrapper', 'hdmap-popup-wrapper');
       document.body.appendChild(wrapperDom);
-      // var newpopup = this.dragPan ? new ol.Overlay({
-      //   autoPan: true,
-      //   autoPanAnimation: {
-      //     duration: 250
-      //   }
-      // }) : new ol.Overlay({})
       var newpopup = new ol.Overlay({});
       newpopup.setElement(wrapperDom);
       this._overlays[popOption] = newpopup;
@@ -2330,7 +2601,7 @@ HDMap.prototype.addPopup = function (popOption) {
       wrapperDom.style.width = width + 'px';
       wrapperDom.appendChild(document.getElementById(popOption));
     } else {
-      console.warn('The element node does not exist');
+      console.warn(warnLogTag + 'The element node does not exist');
     }
   } else if ((typeof popOption === 'undefined' ? 'undefined' : _typeof(popOption)) === 'object' && popOption.visible === true) {
     if (document.getElementById(popOption.domId)) {
@@ -2341,12 +2612,6 @@ HDMap.prototype.addPopup = function (popOption) {
         wrapperDomObject = this.createNode('wrapperDomObject', 'div', 'id', popOption.domId + '-wrapper', 'hdmap-popup-wrapper');
       }
       document.body.appendChild(wrapperDomObject);
-      // var newObjectpopup = this.dragPan ? new ol.Overlay({
-      //   autoPan: true,
-      //   autoPanAnimation: {
-      //     duration: 250
-      //   }
-      // }) : new ol.Overlay({})
       var newObjectpopup = new ol.Overlay({});
       newObjectpopup.setElement(wrapperDomObject);
       this._overlays[popOption.domId] = newObjectpopup;
@@ -2362,7 +2627,7 @@ HDMap.prototype.addPopup = function (popOption) {
       wrapperDomObject.style.width = widthObject + 'px';
       wrapperDomObject.appendChild(document.getElementById(popOption.domId));
     } else {
-      console.warn('The element node does not exist');
+      console.warn(warnLogTag + 'The element node does not exist');
     }
   }
 };
@@ -2391,21 +2656,29 @@ HDMap.prototype.showPopup = function (domId, coordinate, styleObj) {
     this._overlays[domId].setPosition(coordinate);
     popupCtrl.setPopupZIndex(domId);
   } else {
-    console.warn('The element node does not exist');
+    console.warn(warnLogTag + 'The element node does not exist');
   }
 };
 
 /**
  * 默认弹窗
  * @param {Array} coordinate click点的位置
- * @param {String} innerHTMl 默认显示内容
+ * @param {String} innerHTML 默认显示内容
  */
-HDMap.prototype.popupDefault = function (coordinate, innerHTMl) {
+HDMap.prototype.popupDefault = function (coordinate, innerHTML) {
   this.closeCommonPopup();
   this.toggleClassName(this.popup_container, 'hdmap-list-popup', 'hdmap-ol-popup');
+  this.toggleClassName(this.popup_container, 'hdmap-list-popup-multi', 'hdmap-ol-popup-default');
   this.toggleClassName(this.popup_closer, 'hdmap-list-popup-closer', 'hdmap-ol-popup-closer');
-  this.popup_content.innerHTML = innerHTMl;
+  this.popup_content.innerHTML = innerHTML;
   this.popupSetPlace(coordinate);
+  if (!this.popup_container.parentNode.querySelector('.hdmap-list-popup-arrow')) {
+    var popupArrow = document.createElement('div');
+    popupArrow.setAttribute('class', 'hdmap-list-popup-arrow');
+    this.popup_container.parentNode.appendChild(popupArrow);
+    var ps = new PerfectScrollbar(this.popup_container);
+    console.log(ps);
+  }
 };
 
 /**
@@ -2419,6 +2692,14 @@ HDMap.prototype.popupMultipoint = function (coordinate, features) {
   this.popup_content.innerHTML = '';
   this.closeCommonPopup();
   this.toggleClassName(this.popup_container, 'hdmap-ol-popup', 'hdmap-list-popup');
+  this.toggleClassName(this.popup_container, 'hdmap-ol-popup-default', 'hdmap-list-popup-multi');
+  if (!this.popup_container.parentNode.querySelector('.hdmap-list-popup-arrow')) {
+    var popupArrow = document.createElement('div');
+    popupArrow.setAttribute('class', 'hdmap-list-popup-arrow');
+    this.popup_container.parentNode.appendChild(popupArrow);
+    var ps = new PerfectScrollbar(this.popup_container);
+    console.log(ps);
+  }
   this.popup_closer.classList.remove('hdmap-ol-popup-closer');
   this.popup_contentWrap.length = 0;
   for (var i = 0, len = features.length; i < len; i++) {
@@ -2439,14 +2720,15 @@ HDMap.prototype.popupMultipoint = function (coordinate, features) {
 
   var _loop = function _loop(_i, _len) {
     // TODO 这里添加监听的方式可能需要优化，要考虑怎么注销监听
-    _this.popup_contentWrap[_i].onclick = function () {
+    _this.popup_contentWrap[_i].onclick = function (e) {
       // TODO 这里考虑回调类型的判断优化
       hdmap.closeCommonPopup();
       var defaultcb = hdmap.eventCallback['singleclick'].default;
       defaultcb.call(this, {
         feature: features[_i],
         eventType: 'singleclick',
-        coordinate: coordinate
+        coordinate: coordinate,
+        mapEvent: e
       });
     };
   };
@@ -2512,7 +2794,13 @@ HDMap.prototype.closeCommonPopup = function () {
  */
 HDMap.prototype.regDefaulEventCallback = function () {
   for (var eventType in eventRegister) {
-    var key = this._map.on(eventType, eventRegister[eventType]);
+    var tarMap = this._map;
+    var key = null;
+    if (eventType === 'zoomChange') {
+      key = this._map.getView().on('change:resolution', eventRegister[eventType], tarMap);
+    } else {
+      key = this._map.on(eventType, eventRegister[eventType]);
+    }
     this.eventKey[eventType] = key;
   }
 };
@@ -2706,7 +2994,7 @@ HDMap.prototype.initDrawLineTool = function (lineStyle, pointStyle, positioncall
       }
       return styles;
     };
-    var vector = new ol.layer.Vector({
+    var vector = new ol.layer.HDVector('drawLineLayer', {
       source: source,
       style: styleFunction
     });
@@ -2785,7 +3073,7 @@ HDMap.prototype.openDrawLineTool = function (lineStyle, pointStyle, positioncall
  */
 HDMap.prototype.showDrawLine = function (option) {
   if (!option) {
-    console.warn('showDrawLine Error : option is  must need');
+    console.warn(warnLogTag + 'showDrawLine Error : option is  must need');
     return null;
   }
   var layer = this.outterLayers['drawLineLayer'];
@@ -2793,7 +3081,7 @@ HDMap.prototype.showDrawLine = function (option) {
     var source = layer.getSource();
     var features = source.getFeatures();
     if (features.length === 0) {
-      console.warn('showDrawLine Error : there is no feature for save');
+      console.warn(warnLogTag + 'showDrawLine Error : there is no feature for save');
       return null;
     }
     var lineFeaturesArr = [];
@@ -2893,12 +3181,12 @@ HDMap.prototype.removeFrontDrawLine = function (feat) {
  */
 HDMap.prototype.editDrawLine = function (option, lineStyle, pointStyle, positioncall, drawendCall, modifyCall) {
   if (!option) {
-    console.warn('editDrawLine Error : line option can not be null');
+    console.warn(warnLogTag + 'editDrawLine Error : line option can not be null');
     return;
   }
   var bp = option.position ? option.position : option.borderPoints;
   if (!bp) {
-    console.warn('editDrawLine Error : line option.borderPoints or option.position can not be null');
+    console.warn(warnLogTag + 'editDrawLine Error : line option.borderPoints or option.position can not be null');
     return;
   }
   var feature = null;
@@ -3077,7 +3365,7 @@ HDMap.prototype.openDrawShapeTool = function (type, drawendCall, modifyendCall, 
  */
 HDMap.prototype.showDrawShape = function (option) {
   if (!option) {
-    console.warn('showDrawShape Error : option is  must need');
+    console.warn(warnLogTag + 'showDrawShape Error : option is  must need');
     return null;
   }
   var layer = this.outterLayers['drawShapeLayer'];
@@ -3086,7 +3374,7 @@ HDMap.prototype.showDrawShape = function (option) {
     var source = layer.getSource();
     var features = source.getFeatures();
     if (features.length === 0) {
-      console.warn('showDrawShape Error : there is no feature for save');
+      console.warn(warnLogTag + 'showDrawShape Error : there is no feature for save');
       return null;
     }
     var optionArr = [];
@@ -3183,12 +3471,12 @@ HDMap.prototype.removeFrontDrawShape = function (feat) {
  */
 HDMap.prototype.editDrawShape = function (option, selectCall) {
   if (!option) {
-    console.warn('editDrawShape Error : shape option can not be null');
+    console.warn(warnLogTag + 'editDrawShape Error : shape option can not be null');
     return;
   }
   var bp = option.position ? option.position : option.borderPoints;
   if (!bp) {
-    console.warn('editDrawShape Error : shape option.borderPoints or option.position can not be null');
+    console.warn(warnLogTag + 'editDrawShape Error : shape option.borderPoints or option.position can not be null');
     return;
   }
   var feature = null;
@@ -3250,9 +3538,11 @@ HDMap.prototype.editDrawShape = function (option, selectCall) {
         if (e.type === 'rotateend') {
           // 弧度转角度
           _angle = -((_angle * 180 / Math.PI - 180) % 360 + 180);
-          if (e.feature.setRotate instanceof Function) e.feature.setRotate(e.feature.rotate + _angle);
+          if (e.feature.setRotate instanceof Function) {
+            e.feature.setRotate(e.feature.rotate + _angle);
+          }
         }
-        console.log('当前的旋转角度：' + e.feature.rotate);
+        console.log(infoLogTag + '当前的旋转角度：' + e.feature.rotate);
         // console.log(e)
       });
       // Transform 交互添加 '选中feature' 事件监听
@@ -3366,7 +3656,7 @@ HDMap.prototype.setCenter = function (
 /* type : ol.Coordinate */coordinate, zoom) {
   if (coordinate) {
     if (zoom) {
-      this._map.getView().setZoom(zoom);
+      this.setZoom(zoom);
       this._map.getView().setCenter(coordinate);
     } else {
       this._map.getView().setCenter(coordinate);
@@ -3389,12 +3679,23 @@ HDMap.prototype.getCenter = function () {
  * @param {number} zoom
  */
 HDMap.prototype.setZoom = function (zoom) {
-  if (zoom && zoom > this.mapConfig.maxZoom) {
-    this._map.getView().setZoom(this.mapConfig.maxZoom);
-  } else if (zoom && zoom < this.mapConfig.minZoom) {
-    this._map.getView().setZoom(this.mapConfig.minZoom);
+  if (this.mapConfig.gisEngine === 'tile') {
+    zoom = zoom - this.mapConfig.minZoom;
+    if (zoom && zoom > this.mapConfig.maxZoom) {
+      this._map.getView().setZoom(this.mapConfig.maxZoom - this.mapConfig.minZoom);
+    } else if (zoom && zoom < 0) {
+      this._map.getView().setZoom(0);
+    } else {
+      this._map.getView().setZoom(zoom);
+    }
   } else {
-    this._map.getView().setZoom(zoom);
+    if (zoom && zoom > this.mapConfig.maxZoom) {
+      this._map.getView().setZoom(this.mapConfig.maxZoom);
+    } else if (zoom && zoom < this.mapConfig.minZoom) {
+      this._map.getView().setZoom(this.mapConfig.minZoom);
+    } else {
+      this._map.getView().setZoom(zoom);
+    }
   }
 };
 
@@ -3404,7 +3705,12 @@ HDMap.prototype.setZoom = function (zoom) {
  * @return {number}
  */
 HDMap.prototype.getZoom = function () {
-  return this._map.getView().getZoom();
+  var zoom = this._map.getView().getZoom();
+  if (this.mapConfig.gisEngine === 'tile') {
+    return zoom + this.mapConfig.minZoom;
+  } else {
+    return zoom;
+  }
 };
 
 /*
@@ -3429,14 +3735,30 @@ HDMap.prototype.getLonLat = function (e, isGis) {
   layerKey:为图层的标识
   flag:为图层的显示\隐藏  true 显示   false 隐藏
 */
-HDMap.prototype.setLayerVisible = function (layerKey, flag) {
-  var layer = this.getLayerByKey(layerKey);
+HDMap.prototype.setLayerVisible = function (layerKey, flag, isforbi) {
+  var z = this.mapConfig.maxZoom;
+  var nowZoom = this.getZoom();
+  var lk = '';
+  var bool = false;
+  var layer = null;
+  for (var i = Math.floor(z); i > 0; i--) {
+    lk = layerKey + '_' + i;
+    layer = this.getLayerByKey(lk);
+    if (layer) {
+      if (nowZoom >= i) layer.setVisible(flag);
+      if (isforbi !== undefined) layer.setVisibleFlag(isforbi);
+      bool = true;
+    }
+  }
+  layer = this.getLayerByKey(layerKey);
   if (layer) {
     layer.setVisible(flag);
-    // 上面那句执行完后必须要鼠标点击或者拖动一下地图，我们才看的到图层进行隐藏\显示了，
-    // 所以加上这句，强制它动一下。
-    this._map.updateSize();
+    if (isforbi !== undefined) layer.setVisibleFlag(isforbi);
+    bool = true;
   }
+  // 上面那句执行完后必须要鼠标点击或者拖动一下地图，我们才看的到图层进行隐藏\显示了，
+  // 所以加上这句，强制它动一下。
+  if (bool) this._map.updateSize();
 };
 
 /*
@@ -3514,7 +3836,7 @@ HDMap.prototype.closeDragTool = function () {
     delete this.eventKey['translating'];
     ol.Observable.unByKey(select);
     delete this.eventKey['select'];
-    console.log('transstart = ');
+    console.log(infoLogTag + 'transstart = ');
     console.log(transstart);
     this._map.removeInteraction(this.dragFeatureTool.select);
     this._map.removeInteraction(this.dragFeatureTool.translate);
@@ -3530,8 +3852,6 @@ HDMap.prototype.getDragState = function () {
 };
 
 // TODO: 需要将这些坐标转换的工具函数进行提取或者封装，不需要向外暴露
-// TODO: GPS坐标和xy坐标的转换函数有些还需要转换--需要研究一下
-// TODO: 在mapExample中可以看到，在GIS地图上地图坐标还需要通过转化之后传入，需要将这个转化操作封装到对应的函数中
 
 /**
  * 经纬度转球面墨卡托坐标系
@@ -3540,7 +3860,7 @@ HDMap.prototype.getDragState = function () {
  */
 HDMap.prototype.translate_4326_to_3857 = function (position) {
   if (position[0] > 180 || position[0] < -180 || position[1] > 90 || position[1] < -90) {
-    console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
+    console.warn(warnLogTag + 'Error: Longitude range: -180 to 180, latitude range: -90 to 90');
     return;
   }
   var coor = ol.proj.transform(position, 'EPSG:4326', 'EPSG:3857');
@@ -3565,7 +3885,7 @@ HDMap.prototype.translate_3857_to_4326 = function (position) {
  */
 HDMap.prototype.translate_bd09_to_gcj02 = function (position) {
   if (position[0] > 180 || position[0] < -180 || position[1] > 90 || position[1] < -90) {
-    console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
+    console.warn(warnLogTag + 'Error: Longitude range: -180 to 180, latitude range: -90 to 90');
     return;
   }
   var x = position[0] - 0.0065;
@@ -3585,7 +3905,7 @@ HDMap.prototype.translate_bd09_to_gcj02 = function (position) {
  */
 HDMap.prototype.translate_gcj02_to_bd09 = function (position) {
   if (position[0] > 180 || position[0] < -180 || position[1] > 90 || position[1] < -90) {
-    console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
+    console.warn(warnLogTag + 'Error: Longitude range: -180 to 180, latitude range: -90 to 90');
     return;
   }
   var x = position[0];
@@ -3605,7 +3925,7 @@ HDMap.prototype.translate_gcj02_to_bd09 = function (position) {
  */
 HDMap.prototype.translate_gcj02_to_4326 = function (position) {
   if (position[0] > 180 || position[0] < -180 || position[1] > 90 || position[1] < -90) {
-    console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
+    console.warn(warnLogTag + 'Error: Longitude range: -180 to 180, latitude range: -90 to 90');
     return;
   }
   var lng = position[0];
@@ -3627,7 +3947,7 @@ HDMap.prototype.translate_gcj02_to_4326 = function (position) {
  */
 HDMap.prototype.translate_4326_to_gcj02 = function (position) {
   if (position[0] > 180 || position[0] < -180 || position[1] > 90 || position[1] < -90) {
-    console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
+    console.warn(warnLogTag + 'Error: Longitude range: -180 to 180, latitude range: -90 to 90');
     return;
   }
   var lng = position[0];
@@ -3650,7 +3970,7 @@ HDMap.prototype.translate_4326_to_gcj02 = function (position) {
  */
 HDMap.prototype.translate_4326_to_bd09 = function (position) {
   if (position[0] > 180 || position[0] < -180 || position[1] > 90 || position[1] < -90) {
-    console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
+    console.warn(warnLogTag + 'Error: Longitude range: -180 to 180, latitude range: -90 to 90');
     return;
   }
   var tmp = this.translate_4326_to_gcj02(position);
@@ -3665,53 +3985,11 @@ HDMap.prototype.translate_4326_to_bd09 = function (position) {
  */
 HDMap.prototype.translate_bd09_to_4326 = function (position) {
   if (position[0] > 180 || position[0] < -180 || position[1] > 90 || position[1] < -90) {
-    console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
+    console.warn(warnLogTag + 'Error: Longitude range: -180 to 180, latitude range: -90 to 90');
     return;
   }
   var tmp = this.translate_bd09_to_gcj02(position);
   var lonlat = this.translate_gcj02_to_4326(tmp);
-  return lonlat;
-};
-
-/**
- * 经纬度(4326)坐标换算光栅图坐标
- * @param {Array} 经纬度坐标
- * @return {Array} 光栅坐标
- */
-HDMap.prototype.transfromWGSToBitMap = function (position) {
-  if (position[0] > 180 || position[0] < -180 || position[1] > 90 || position[1] < -90) {
-    console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
-    return;
-  }
-  var mlonlat = this.translate_4326_to_3857(position);
-  var mcenter = this.translate_4326_to_3857(this.mapConfig.centerGPS);
-
-  var pntX = (mlonlat[0] - mcenter[0]) / this.mapConfig.scale;
-  var pntY = (mlonlat[1] - mcenter[1]) / this.mapConfig.scale;
-  var pnt = [pntX, pntY];
-  // var pnt = [mlonlat[0] - mcenter[0], mlonlat[1] - mcenter[1]];
-  return pnt;
-};
-
-/**
- * 光栅图坐标转换经纬度(4326)坐标
- * @param {Array} 光栅图坐标
- * @return {Array} 经纬度
- */
-HDMap.prototype.transBitmapToWGS = function (coordinate) {
-  if (this.mapConfig.scaleType !== 1) {
-    console.warn('this map cannot translate XYZ to GPS');
-    return;
-  }
-  var coorX = coordinate[0] * this.mapConfig.scale;
-  var coorY = coordinate[1] * this.mapConfig.scale;
-  var mcenter = this.translate_4326_to_3857(this.mapConfig.centerGPS);
-  if (!mcenter) {
-    console.warn('centerGPS of this map error');
-    return;
-  }
-  var mlonlat = [mcenter[0] + coorX, mcenter[1] + coorY];
-  var lonlat = this.translate_3857_to_4326(mlonlat);
   return lonlat;
 };
 
@@ -3748,8 +4026,6 @@ HDMap.prototype.destroy = function () {
   }
   layers.clear();
   delete hdmap.mapManager[this.getMapUid()];
-  // 后面加上自己清理的一些逻辑就好了
-  // TODO: 需要完善注销函数中的清理
 };
 
 /**
@@ -3789,7 +4065,7 @@ HDMap.prototype.clearMap = function () {
  */
 HDMap.prototype.changeZoom = function () {
   this._map.getView().on('change:resolution', function (e) {
-    var zoom = this._map.getView().getZoom();
+    var zoom = this.getZoom();
     return zoom;
   });
 };
@@ -3830,7 +4106,7 @@ HDMap.prototype.toggleClassName = function (element, oldName, newName) {
 /**
  * 获取当前弹窗显示个数
  * @return {Number}
-*/
+ */
 HDMap.prototype.popupShowNum = function () {
   var popnum = 0;
   for (var o in this._overlays) {
@@ -3844,7 +4120,7 @@ HDMap.prototype.popupShowNum = function () {
 /**
  * 关闭指定弹窗
  * @param {String} popName 弹窗节点名
-*/
+ */
 HDMap.prototype.closeSinglePopup = function (popName) {
   this._overlays[popName].show = false;
   this._overlays[popName].setPosition(undefined);
@@ -3854,8 +4130,8 @@ HDMap.prototype.closeSinglePopup = function (popName) {
 
 /**
  * 关闭某类弹窗
- * @param {String} type 弹窗节点名
-*/
+ * @param {String} type 类型
+ */
 HDMap.prototype.closeTypePopup = function (type) {
   for (var i in this._overlays) {
     if (this._overlays[i].type === type) {
@@ -3865,6 +4141,354 @@ HDMap.prototype.closeTypePopup = function (type) {
   }
   popupCtrl.curPopNum = this.popupShowNum();
   popupCtrl.reset();
+};
+
+/**
+ * 经纬度(4326)坐标换算光栅图坐标
+ * @param {Array} 经纬度坐标
+ * @return {Array} 光栅坐标
+ */
+HDMap.prototype.transfromWGSToBitMap = function (lonlat) {
+  if (lonlat[0] > 180 || lonlat[0] < -180 || lonlat[1] > 90 || lonlat[1] < -90) {
+    console.warn(warnLogTag + 'Error: Longitude range: -180 to 180, latitude range: -90 to 90');
+    return null;
+  }
+  if (this.mapConfig.scaleType === 1 || this.mapConfig.scaleType === '1') {
+    var mlonlat = this.translate_4326_to_3857(lonlat);
+    var mcenter = this.translate_4326_to_3857(this.mapConfig.centerGPS);
+    if (!mcenter) {
+      console.warn(warnLogTag + 'centerGPS of this map error');
+      return;
+    }
+    var pntX = (mlonlat[0] - mcenter[0]) / this.mapConfig.scale;
+    var pntY = (mlonlat[1] - mcenter[1]) / this.mapConfig.scale;
+    var r = Math.sqrt(Math.pow(pntX, 2) + Math.pow(pntY, 2));
+    var angle = Math.atan2(pntY, pntX) - this.mapConfig.arcAngle;
+    var pos = [];
+    pos[0] = r * Math.cos(angle);
+    pos[1] = r * Math.sin(angle);
+    return pos;
+  } else {
+    console.warn(warnLogTag + 'ScaleType must equal 1');
+    return null;
+  }
+};
+
+/**
+ * 光栅图坐标转换经纬度(4326)坐标
+ * @param {Array} 光栅图坐标
+ * @return {Array} 经纬度
+ */
+HDMap.prototype.transBitmapToWGS = function (coordinate) {
+  if (this.mapConfig.scaleType !== '1' && this.mapConfig.scaleType !== 1) {
+    console.warn(warnLogTag + 'this map cannot translate XYZ to GPS');
+    return;
+  }
+
+  // 坐标转换成3857坐标
+  function toLonArr(point, center, scale, arcAngle) {
+    var angle = Math.atan2(point[1], point[0]) + arcAngle;
+    var r = Math.sqrt(Math.pow(point[0], 2) + Math.pow(point[1], 2));
+    var arr = [];
+    arr[0] = center[0] + r * Math.cos(angle) * scale;
+    arr[1] = center[1] + r * Math.sin(angle) * scale;
+    return arr;
+  }
+
+  var mcenter = this.translate_4326_to_3857(this.mapConfig.centerGPS);
+  if (!mcenter) {
+    console.warn(warnLogTag + 'centerGPS of this map error');
+    return;
+  }
+  var lonArr = toLonArr(coordinate, mcenter, this.mapConfig.scale, this.mapConfig.arcAngle);
+  var lonlat = this.translate_3857_to_4326(lonArr);
+  return lonlat;
+};
+
+/**
+ * 获取两点位之间的距离
+ * @param {Array} pointA 点位光栅坐标
+ * @param {Array} pointB 点位光栅坐标
+ */
+HDMap.prototype.getDistanceByMarker = function (pointA, pointB) {
+  var distance;
+  if (this.mapConfig.scaleType === 1 || this.mapConfig.scaleType === '1') {
+    var lonA = this.transBitmapToWGS(pointA);
+    var lonB = this.transBitmapToWGS(pointB);
+    distance = this.getDistance(lonA, lonB);
+    return distance;
+  } else if (this.mapConfig.scaleType === 2) {
+    var sizeDistance = Math.sqrt(Math.pow(pointA[0] - pointB[0], 2) + Math.pow(pointA[1] - pointB[1], 2));
+    distance = sizeDistance / this.mapConfig.scale;
+    return distance;
+  } else {
+    console.warn(warnLogTag + 'ScaleType is error');
+    return null;
+  }
+};
+
+/**
+ * 添加报警弹窗
+ * @param {Object} warnInfo 报警信息
+ */
+HDMap.prototype.addWarnPopup = function (warnInfo, fn) {
+  if (!document.getElementById(warnInfo.id)) {
+    var color = warnInfo && warnInfo.color ? warnInfo.color : warnInfo.type === 'danger' ? '255,165,0' : '255,0,0';
+    // 创建弹窗
+    var wrapperDomObject = this.createNode('wrapperDomObject', 'div', 'id', warnInfo.id, 'hdmap-warn-pop');
+    wrapperDomObject.innerText = warnInfo.text || '报警事件';
+    wrapperDomObject.style.backgroundColor = 'rgb(' + color + ')';
+    // 创建箭头div
+    var arrow = this.createNode('arrow', 'div', 'id', warnInfo.domId + '-arrow', 'hdmap-warn-pop-arrow');
+    arrow.style.borderRightColor = 'rgb(' + color + ')';
+    wrapperDomObject.appendChild(arrow);
+    document.body.appendChild(wrapperDomObject);
+    // 添加点击事件
+    if (fn && typeof fn === 'function') {
+      wrapperDomObject.onclick = fn;
+    }
+    // 创建气泡
+    var newObjectpopup = new ol.Overlay({});
+    newObjectpopup.setElement(wrapperDomObject);
+    this._warnOverlays[warnInfo.id] = newObjectpopup;
+    this.getMap().addOverlay(newObjectpopup);
+    // 显示气泡
+    this._warnOverlays[warnInfo.id].setPosition(warnInfo.position);
+  } else {
+    console.warn(warnLogTag + 'node is already save');
+  }
+};
+
+/**
+ * 点位报警
+ * @param {Object} warnInfo 点位信息
+ * {
+ *  position: [0,0], 必填
+ *  id: '111', 必填
+ *  type: 'warn' || 'danger', 默认warn
+ *  text: '落水预警', 默认'报警事件'
+ *  color: '100,100,100' 自定义动画颜色，当传入color，type不起作用
+ * }
+ */
+HDMap.prototype.warnMarkerStart = function (warnInfo, fn) {
+  var color = warnInfo && warnInfo.color ? warnInfo.color : warnInfo.type === 'danger' ? '255,165,0' : '255,0,0';
+  var layerKey = layerManager.getLayerKeyByType('warnMarker');
+  var layer = this.getLayerByKey(layerKey);
+  if (layer === undefined || layer === null) {
+    // 图层不存在，则进行图层创建的操作
+    layer = this.addLayerByLayerKey(layerKey);
+  }
+  layer.setZIndex(999);
+  // 创建点位
+  var feature2 = createFeature(warnInfo, layerKey, 'out');
+  var feature1 = createFeature(warnInfo, layerKey, 'in');
+  var feature = createFeature(warnInfo, layerKey);
+
+  // 添加样式
+  feature.setStyle(warnStyle(10, 'rgba(' + color + ',1)'));
+
+  // 添加点位，只执行一次
+  if (!layer.getSource().getFeatureById(warnInfo.id)) {
+    layer.getSource().addFeature(feature);
+    layer.getSource().addFeature(feature1);
+    layer.getSource().addFeature(feature2);
+  }
+
+  // 监听动画，改变样式
+  var radius = 0;
+  this._map.on('postcompose', function () {
+    radius += 0.4;
+    if (radius < 10) {
+      feature2.setStyle(warnStyle(0, 'rgba(' + color + ',0.3)'));
+      feature1.setStyle(warnStyle(0, 'rgba(' + color + ',0.5)'));
+    } else if (radius < 20 && radius >= 10) {
+      feature1.setStyle(warnStyle(15, 'rgba(' + color + ',0.5)'));
+    } else if (radius < 30 && radius >= 20) {
+      feature2.setStyle(warnStyle(20, 'rgba(' + color + ',0.3)'));
+    } else if (radius >= 30) {
+      radius = 0;
+      feature2.setStyle(warnStyle(0, 'rgba(' + color + ',0.3)'));
+      feature1.setStyle(warnStyle(0, 'rgba(' + color + ',0.5)'));
+    }
+  });
+
+  // 添加气泡
+  if (fn && typeof fn === 'function') {
+    this.addWarnPopup(warnInfo, fn);
+  } else {
+    this.addWarnPopup(warnInfo);
+  }
+  return feature;
+};
+
+/**
+ * 取消点位报警
+ * @param {Object} warnInfo 点位信息
+ */
+HDMap.prototype.warnMarkerCancel = function (warnInfo) {
+  // 移除点位
+  this.removeMarkerBylayerKey(warnInfo.id + 'in', 'warnMarkerLayer');
+  this.removeMarkerBylayerKey(warnInfo.id + 'out', 'warnMarkerLayer');
+  this.removeMarkerBylayerKey(warnInfo.id, 'warnMarkerLayer');
+  // 移除气泡
+  this.getMap().removeOverlay(this._warnOverlays[warnInfo.id]);
+};
+
+/**
+ * 更新点位报警
+ * @param {Object} warnInfo 点位信息
+ */
+HDMap.prototype.updateWarnMarker = function (warnInfo) {
+  if (!warnInfo.id) {
+    console.warn(warnLogTag + 'markerId can not be empty');
+  } else {
+    var marker = this.getMarkerBylayerKey(warnInfo.id, 'warnMarkerLayer');
+    var markerIn = this.getMarkerBylayerKey(warnInfo.id + 'in', 'warnMarkerLayer');
+    var markerOut = this.getMarkerBylayerKey(warnInfo.id + 'out', 'warnMarkerLayer');
+    if (marker) {
+      var properties = marker.getExtProperties();
+      this.copyAttr(properties, warnInfo);
+      if (warnInfo.position) {
+        // 更新点位与弹窗
+        marker.getGeometry().setCoordinates(warnInfo.position);
+        markerIn.getGeometry().setCoordinates(warnInfo.position);
+        markerOut.getGeometry().setCoordinates(warnInfo.position);
+        this._warnOverlays[warnInfo.id].setPosition(warnInfo.position);
+      }
+    } else {
+      console.warn(warnLogTag + 'This point does not exist');
+    }
+  }
+};
+
+/**
+ * 创建点位
+ * @param {Object} warnInfo 点位信息
+ * @param {String} layerKey 图层名
+ * @param {String} suffix 后缀
+ */
+function createFeature(warnInfo, layerKey, suffix) {
+  var feature = new ol.DevFeature({
+    geometry: new ol.geom.Point(warnInfo.position),
+    name: warnInfo.markerName,
+    population: 4000,
+    rainfall: 500
+  }, warnInfo, layerKey);
+  if (suffix) {
+    feature.setId(warnInfo.id + suffix);
+  } else {
+    feature.setId(warnInfo.id);
+  }
+  return feature;
+}
+
+/**
+ * 报警点样式
+ * @param {Number} radius 半径
+ * @param {String} color 颜色
+ */
+function warnStyle(radius, color) {
+  var style = new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: radius,
+      fill: new ol.style.Fill({
+        color: color
+      })
+    })
+  });
+  return style;
+}
+
+/**
+ * 添加报警弹窗
+ * @param {Object} warnInfo 报警信息
+ * {
+ *  position: [0,0], 必填
+ *  id: '111', 必填
+ *  type: '', 默认danger
+ *  text: '落水预警', 默认'预警事件'
+ * }
+ */
+HDMap.prototype.addWarningPopup = function (warnInfo) {
+  if (!document.getElementById(warnInfo.id)) {
+    var type = warnInfo.type ? warnInfo.type : 'danger';
+    var text = warnInfo.text ? warnInfo.text : '预警事件';
+    var html;
+    var wrapperDomObject = this.createNode('wrapperDomObject', 'div', 'id', warnInfo.id, 'hdmap-warning-popup-wrap');
+    if (type === 'warn') {
+      html = '<div class="hdmap-popup-warn"></div><div class="hdmap-warn-pop">' + text + '<div class="hdmap-warn-pop-arrow"></div></div>';
+    } else {
+      html = '<div class="hdmap-popup-danger"></div><div class="hdmap-danger-pop">' + text + '<div class="hdmap-danger-pop-arrow"></div></div>';
+    }
+    wrapperDomObject.innerHTML = html;
+    document.body.appendChild(wrapperDomObject);
+    // 添加点击事件
+    var that = this;
+    wrapperDomObject.onclick = function (e) {
+      that.eventCallback['singleclick'].default.call(this, {
+        feature: warnInfo,
+        eventType: 'singleclick',
+        coordinate: warnInfo.position,
+        layerKey: null,
+        mapEvent: {
+          originalEvent: e
+        }
+      });
+    };
+    // 创建气泡
+    var newObjectpopup = new ol.Overlay({});
+    newObjectpopup.setElement(wrapperDomObject);
+    this._warnOverlays[warnInfo.id] = newObjectpopup;
+    this.getMap().addOverlay(newObjectpopup);
+    // 显示气泡
+    this._warnOverlays[warnInfo.id].setPosition(warnInfo.position);
+  } else {
+    console.warn('node is already save');
+  }
+};
+
+/**
+ * 移除报警弹窗
+ * @param {String} id 点位id
+ */
+HDMap.prototype.removeWarningPopup = function (id) {
+  // 移除气泡
+  this.getMap().removeOverlay(this._warnOverlays[id]);
+};
+
+/**
+ * 清除全部报警弹窗
+ */
+HDMap.prototype.clearWarningPopup = function () {
+  // 移除气泡
+  for (var i in this._warnOverlays) {
+    this.getMap().removeOverlay(this._warnOverlays[i]);
+  }
+};
+
+/**
+ * 判断点位是否在可视区域内
+ * @param {Array} coordinate 需要判断的点位坐标（可以为GPS）
+ * @param {Number} isGPS 传递的coordinate是否为GPS坐标
+ * @returns {Boolean} 点位是否在可视区域内
+ */
+HDMap.prototype.isInTileMapViewArea = function (coordinate, isGPS) {
+  if (this.mapConfig.gisEngine !== 'tile') {
+    return true;
+  }
+  if (isGPS) {
+    coordinate = this.transfromWGSToBitMap(coordinate);
+    if (!coordinate) {
+      console.warn(warnLogTag + ' can not translate GPS to position');
+      return false;
+    }
+  }
+  var range = this.mapConfig.viewRange;
+  if (coordinate[0] >= range.minX && coordinate[0] <= range.maxX && coordinate[1] >= range.minY && coordinate[1] <= range.maxY) {
+    return true;
+  } else {
+    return false;
+  }
 };
 
 /**
@@ -3888,173 +4512,16 @@ HDMap.prototype.closeTypePopup = function (type) {
  */
 function getDistanceByGPS(map, lonlatA, lonlatB) {
   if (lonlatA[0] > 180 || lonlatA[0] < -180 || lonlatA[1] > 90 || lonlatA[1] < -90 || lonlatB[0] > 180 || lonlatB[0] < -180 || lonlatB[1] > 90 || lonlatB[1] < -90) {
-    console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
+    console.warn(warnLogTag + 'Error: Longitude range: -180 to 180, latitude range: -90 to 90');
     return;
   }
-  // // 经纬度转换成三角函数中度分表形式
-  // function rad(d) {
-  //   return d * Math.PI / 180.0
-  // }
-  // let radLat1 = rad(lonlatA[1])
-  // let radLat2 = rad(lonlatB[1])
-  // let a = radLat1 - radLat2
-  // let b = rad(lonlatA[0]) - rad(lonlatB[0])
-  // let distance =
-  //   2 *
-  //   Math.asin(
-  //     Math.sqrt(
-  //       Math.pow(Math.sin(a / 2), 2) +
-  //         Math.cos(radLat1) * Math.cos(radLat2) * Math.pow(Math.sin(b / 2), 2)
-  //     )
-  //   )
-  // distance = Math.round(distance * 6378137)
   var distance = map.getDistance(lonlatA, lonlatB);
   return distance;
 }
 
-/**
- * 根据两点的坐标计算两点距离
- * @param {HDMap} 地图对象
- * @param {JSON} lonlats { 'lonlatA':[],'lonlatB':[],'lonlatC':[] }
- * @param {JSON} points  { 'pointA':[], 'pointB':[], 'pointC':[] }
- * @return {Number} 距离 单位m
- */
-function getDistanceByPoint(map, lonlats, points) {
-  // 判断经纬度范围
-  for (var key in lonlats) {
-    if (lonlats[key][0] > 180 || lonlats[key][0] < -180 || lonlats[key][1] > 90 || lonlats[key][1] < -90) {
-      console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
-      return null;
-    }
-  }
-  // 光栅图坐标换算经纬度
-  var centerGPS = getCenterGPS(lonlats, points); // 中心点GPS坐标
-  var mcenter = map.translate_4326_to_3857(centerGPS); // 中心点GPS坐标转光栅坐标
-  var scale = getScaleByGPS(map, lonlats, points); // 获取偏移比例尺
-
-  // 修正AB两点的坐标位置
-  var pntAX = points['pointA'][0] * scale;
-  var pntAY = points['pointA'][1] * scale;
-  var pntBX = points['pointB'][0] * scale;
-  var pntBY = points['pointB'][1] * scale;
-  var mlonlatA = [mcenter[0] + pntAX, mcenter[1] + pntAY];
-  var lonlatA = map.translate_3857_to_4326(mlonlatA); // 点位A的GPS坐标
-
-  var mlonlatB = [mcenter[0] + pntBX, mcenter[1] + pntBY];
-  var lonlatB = map.translate_3857_to_4326(mlonlatB); // 点位B的GPS坐标
-
-  var distance = map.getDistance(lonlatA, lonlatB);
-  return distance;
-}
-
-/**
- * 根据三个GPS和对应的坐标信息计算修正地图的比例尺
- * @param {HDMap} 地图对象
- * @param {JSON} lonlats { 'lonlatA':[],'lonlatB':[],'lonlatC':[] }
- * @param {JSON} points  { 'pointA':[], 'pointB':[], 'pointC':[] }
- * @return {Number} scale分母
- */
-function getScaleByGPS(map, lonlats, points) {
-  // 判断经纬度范围
-  for (var key in lonlats) {
-    if (lonlats[key][0] > 180 || lonlats[key][0] < -180 || lonlats[key][1] > 90 || lonlats[key][1] < -90) {
-      console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
-      return null;
-    }
-  }
-  // 经纬度换算光栅图坐标
-  var centerGPS = getCenterGPS(lonlats, points); // 中心点GPS坐标
-  var mcenter = map.translate_4326_to_3857(centerGPS); // 中心点GPS坐标转光栅坐标
-  var mlonlatA = map.translate_4326_to_3857(lonlats['lonlatA']);
-  var mlonlatB = map.translate_4326_to_3857(lonlats['lonlatB']);
-  var mlonlatC = map.translate_4326_to_3857(lonlats['lonlatC']);
-
-  var pntAX = mlonlatA[0] - mcenter[0];
-  var pntAY = mlonlatA[1] - mcenter[1];
-  var pntBX = mlonlatB[0] - mcenter[0];
-  var pntBY = mlonlatB[1] - mcenter[1];
-  var pntCX = mlonlatC[0] - mcenter[0];
-  var pntCY = mlonlatC[1] - mcenter[1];
-
-  var scaleAX = pntAX / points['pointA'][0];
-  var scaleAY = pntAY / points['pointA'][1];
-  var scaleBX = pntBX / points['pointB'][0];
-  var scaleBY = pntBY / points['pointB'][1];
-  var scaleCX = pntCX / points['pointC'][0];
-  var scaleCY = pntCY / points['pointC'][1];
-  var scaleA = (scaleAX + scaleAY) / 2;
-  var scaleB = (scaleBX + scaleBY) / 2;
-  var scaleC = (scaleCX + scaleCY) / 2;
-  var scale = (scaleA + scaleB + scaleC) / 3;
-  return scale;
-}
-
-/**
- * 根据三个GPS点进行中心点计算
- * @param {JSON} lonlats { 'lonlatA':[],'lonlatB':[],'lonlatC':[] }
- * @param {JSON} points  { 'pointA':[], 'pointB':[], 'pointC':[] }
- * @return {Array}
- */
-function getCenterGPS(lonlats, points) {
-  // 判断GPS点的范围
-  for (var key in lonlats) {
-    if (lonlats[key][0] > 180 || lonlats[key][0] < -180 || lonlats[key][1] > 90 || lonlats[key][1] < -90) {
-      console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
-      return null;
-    }
-  }
-  // 判断点是否在同一水平上
-  if (lonlats['lonlatA'][0] === lonlats['lonlatB'][0] || lonlats['lonlatA'][0] === lonlats['lonlatC'][0] || lonlats['lonlatB'][0] === lonlats['lonlatC'][0] || lonlats['lonlatA'][1] === lonlats['lonlatB'][1] || lonlats['lonlatA'][1] === lonlats['lonlatC'][1] || lonlats['lonlatB'][1] === lonlats['lonlatC'][1]) {
-    console.warn('The latitude and longitude of two points can\'t be the same');
-    return null;
-  }
-  // 计算AB两个GPS的中心点
-  var lon1 = lonlats['lonlatA'][0] - (lonlats['lonlatB'][0] - lonlats['lonlatA'][0]) * points['pointA'][0] / (points['pointB'][0] - points['pointA'][0]);
-  var lat1 = lonlats['lonlatB'][1] - (lonlats['lonlatB'][1] - lonlats['lonlatA'][1]) * points['pointB'][1] / (points['pointB'][1] - points['pointA'][1]);
-
-  // 计算AC两个GPS的中心点
-  var lon2 = lonlats['lonlatA'][0] - (lonlats['lonlatC'][0] - lonlats['lonlatA'][0]) * points['pointA'][0] / (points['pointC'][0] - points['pointA'][0]);
-  var lat2 = lonlats['lonlatC'][1] - (lonlats['lonlatC'][1] - lonlats['lonlatA'][1]) * points['pointC'][1] / (points['pointC'][1] - points['pointA'][1]);
-
-  // 计算BC两个GPS的中心点
-  var lon3 = lonlats['lonlatC'][0] - (lonlats['lonlatB'][0] - lonlats['lonlatC'][0]) * points['pointC'][0] / (points['pointB'][0] - points['pointC'][0]);
-  var lat3 = lonlats['lonlatB'][1] - (lonlats['lonlatB'][1] - lonlats['lonlatC'][1]) * points['pointB'][1] / (points['pointB'][1] - points['pointC'][1]);
-
-  // 根据三个中心点算出平均值
-  var lon = (lon1 + lon2 + lon3) / 3;
-  var lat = (lat1 + lat2 + lat3) / 3;
-  var centerGPS = [lon, lat];
-  if (lon > 180 || lon < -180 || lat > 90 || lat < -90) {
-    console.warn('Error: centerGPS: [' + centerGPS + '] The longitude must be between -180 and 180, latitude must be between -90 and 90');
-    return false;
-  } else {
-    return centerGPS;
-  }
-}
-
-/**
- * 根据地图的长宽和真实长宽进行比例尺计算
- * @param {*} sizeWidth
- * @param {*} sizeHeight
- * @param {*} realWidth
- * @param {*} realHeight
- * @return {Number} scale分母
- */
-function getScaleBySize(sizeWidth, sizeHeight, realWidth, realHeight) {
-  // 根据图片宽高和真实宽高获取比例尺
-  var width = sizeWidth * 0.0254 / 72;
-  var height = sizeHeight * 0.0254 / 72;
-  var widthScale = realWidth / width;
-  var heightScale = realHeight / height;
-
-  // 根据两个比例尺求出平均比例尺
-  var scale = (widthScale + heightScale) / 2;
-  console.log(scale);
-  return scale;
-}
 /**
  * 获取地图某个区域（多边形）重心
- * @param {Array} points 多边形各点的坐标数组
+ * @param {Array} points 多边形各点的坐标数组 [[x1,y1],[x2,y2],[x3,y3]....]  二维数组
  * @return {Array} areaCenter  重心坐标
  */
 function getAreaCenter(points) {
@@ -4084,10 +4551,24 @@ function getAreaCenter(points) {
   areaCenter[1] = Gy;
   return areaCenter;
 }
-
+/**
+ * 获取三角形重心
+ * @param {Array} points 三角形各点的坐标数组 [[x1,y1],[x2,y2],[x3,y3]]  二维数组
+ * @return {Array} 三角形重心trianglePoint:[x,y]
+ */
+function getTrianglePoint(points) {
+  var trianglePoint = [0, 0];
+  for (var i = 0; i < points.length; i++) {
+    trianglePoint[0] += points[i][0];
+    trianglePoint[1] += points[i][1];
+  }
+  trianglePoint[0] = trianglePoint[0] / 3;
+  trianglePoint[1] = trianglePoint[1] / 3;
+  return trianglePoint;
+}
 /**
  * 获取重心点到多边形最近某个点的最短x轴,y轴的距离
- * @param {Array} points 多边形各点的坐标数组
+ * @param {Array} points 多边形各点的坐标数组 [[x1,y1],[x2,y2],[x3,y3]....]  二维数组
  * @return {Array} minDistance  重心点到多边形最近点的X，Y 轴绝对值距离
  */
 function getMinDistance(points) {
@@ -4111,8 +4592,26 @@ function getMinDistance(points) {
   return minDistance;
 }
 /**
+ * 根据三角形重心是否在区域范围内求点位坐标
+ * @param {Array} points 区域多边形各点的坐标数组 [[x1,y1],[x2,y2],[x3,y3]....]  二维数组
+ * @param {Array} triangle 形成三角形的第三个点 一维数组
+ * @param {Array} interceptingCoordinate 形成三角形的前两个点  二维数组
+ * @return {Array} trianglePoint  点位坐标 一维数组 [x,y]
+ */
+function recursionPoint(points, triangle, interceptingCoordinate) {
+  interceptingCoordinate.push(triangle);
+  // 获取三角形重心
+  var trianglePoint = getTrianglePoint(interceptingCoordinate);
+  var judge = judgePointInsidePolygon(trianglePoint, points);
+  if (judge === 'in' || judge === 'on') {
+    return trianglePoint;
+  }
+  interceptingCoordinate.pop();
+  return recursionPoint(points, trianglePoint, interceptingCoordinate);
+}
+/**
  * 获取摄像头坐标
- * @param {Array} points 多边形各点的坐标数组
+ * @param {Array} points 多边形各点的坐标数组 [[x1,y1],[x2,y2],[x3,y3]....]  二维数组
  * @return {Array} cameraCountPoint  摄像头坐标
  */
 function getCameraCountPoint(points) {
@@ -4122,11 +4621,19 @@ function getCameraCountPoint(points) {
   var cameraCountPointY = getAreaCenter(points)[1];
   cameraCountPoint[0] = cameraCountPointX;
   cameraCountPoint[1] = cameraCountPointY;
-  return cameraCountPoint;
+  var isTrue = judgePointInsidePolygon(cameraCountPoint, points);
+  if (isTrue === 'on' || isTrue === 'in') {
+    return cameraCountPoint;
+  } else {
+    // 截取顶点坐标数组前两个
+    var interceptingCoordinate = points.slice(0, 2);
+    cameraCountPoint = recursionPoint(points, points[2], interceptingCoordinate);
+    return cameraCountPoint;
+  }
 }
 /**
  * 获取广播坐标
- * @param {Array} points 多边形各点的坐标数组
+ * @param {Array} points 多边形各点的坐标数组 [[x1,y1],[x2,y2],[x3,y3]....]  二维数组
  * @return {Array} broadcastCountPoint  广播坐标
  */
 function getBroadcastCountPoint(points) {
@@ -4136,11 +4643,20 @@ function getBroadcastCountPoint(points) {
   var broadcastCountPointY = getAreaCenter(points)[1];
   broadcastCountPoint[0] = broadcastCountPointX;
   broadcastCountPoint[1] = broadcastCountPointY;
-  return broadcastCountPoint;
+  // return broadcastCountPoint
+  var isTrue = judgePointInsidePolygon(broadcastCountPoint, points);
+  if (isTrue === 'on' || isTrue === 'in') {
+    return broadcastCountPoint;
+  } else {
+    // 截取顶点坐标数组第二，第三个
+    var interceptingCoordinate1 = points.slice(1, 3);
+    broadcastCountPoint = recursionPoint(points, points[3], interceptingCoordinate1);
+    return broadcastCountPoint;
+  }
 }
 /**
  * 获取报警坐标
- * @param {Array} points 多边形各点的坐标数组
+ * @param {Array} points 多边形各点的坐标数组 [[x1,y1],[x2,y2],[x3,y3]....]  二维数组
  * @return {Array} waringConutPoint  报警坐标
  */
 function getWarningConutPoint(points) {
@@ -4150,12 +4666,27 @@ function getWarningConutPoint(points) {
   var waringConutPointY = getAreaCenter(points)[1] - getMinDistance(points)[1];
   waringConutPoint[0] = waringConutPointX;
   waringConutPoint[1] = waringConutPointY;
-  return waringConutPoint;
+  // return waringConutPoint
+  var isTrue = judgePointInsidePolygon(waringConutPoint, points);
+  if (isTrue === 'on' || isTrue === 'in') {
+    return waringConutPoint;
+  } else {
+    var interceptingCoordinate2 = [];
+    if (points.length === 4) {
+      interceptingCoordinate2[0] = points[2];
+      interceptingCoordinate2[1] = points[3];
+      waringConutPoint = recursionPoint(points, points[0], interceptingCoordinate2);
+    } else {
+      interceptingCoordinate2 = points.slice(2, 4);
+      waringConutPoint = recursionPoint(points, points[3], interceptingCoordinate2);
+    }
+    return waringConutPoint;
+  }
 }
 /**
  * 射线法判断点是否在多边形内部
  * @param {Array} point 待判断的点，格式：[X坐标, Y坐标]
- * @param {Array} poly 多边形顶点，数组成员的格式同 point
+ * @param {Array} poly 多边形顶点，二维数组 poly:[[X1, Y1],[X2, Y2],[X3, Y3].......]
  * @return {String} 点 point 和多边形 poly 的几何关系
  */
 function judgePointInsidePolygon(point, poly) {
@@ -4182,10 +4713,13 @@ function judgePointInsidePolygon(point, poly) {
     // 射线穿过多边形边界的次数为奇数时点在多边形内
     return f ? 'in' : 'out';
   }
-  // console.log(poly)
-  var result = rayMethod(point, poly);
-  // console.log(result)
-  return result;
+  if (point instanceof Array && point.length === 2) {
+    var result = rayMethod(point, poly);
+    return result;
+  } else {
+    console.warn('点位越界传参有误： position must be a array && position.length === 2');
+    return null;
+  }
 }
 
 /**
@@ -4195,9 +4729,20 @@ function judgePointInsidePolygon(point, poly) {
  * @return {Array} markersInfo 点位信息数组[{},{}]
  */
 function getFeaturesInExtent(map, coordinate) {
-  // 设置半径根据地图放大等级而相应的缩小
-  var zoom = map.getZoom();
-  var distance = 24 / Math.pow(2, zoom - 3);
+  var resolution;
+  var distance;
+  if (map.mapConfig.gisEngine === 'tile') {
+    // 设置半径根据地图分辨率等级变大而相应的变大
+    resolution = map.getMap().getView().getResolution();
+    if (resolution === 1) {
+      distance = 32;
+    } else {
+      distance = 64 * Math.log2(resolution);
+    }
+  } else {
+    var zoom = map.getZoom();
+    distance = 24 / Math.pow(2, zoom - 3);
+  }
   // 设置区域范围
   var extent$$1 = [coordinate[0] - distance, coordinate[1] - distance, coordinate[0] + distance, coordinate[1] + distance];
   var layers = map.getOutterLayers();
@@ -4206,9 +4751,11 @@ function getFeaturesInExtent(map, coordinate) {
   // 保存点位图层信息
   var markersInfo = [];
   for (var key in layers) {
-    // 选定区域
-    var layer = layers[key].getSource().getFeaturesInExtent(extent$$1);
-    layersInfo.push(layer);
+    if (layers[key].getVisible()) {
+      // 选定区域
+      var layer = layers[key].getSource().getFeaturesInExtent(extent$$1);
+      layersInfo.push(layer);
+    }
   }
   // 排空
   var resdata = layersInfo.filter(function (item) {
@@ -4220,6 +4767,7 @@ function getFeaturesInExtent(map, coordinate) {
       var ele = element[j];
       // 判断是否有点位信息
       if (ele.extProperties && ele.extProperties.markerType) {
+        ele.extProperties.layerkey = ele.getLayerKey();
         markersInfo.push(ele.extProperties);
       }
     }
@@ -4357,18 +4905,23 @@ function getParkingLockPoint(borderPoints, rotate) {
  */
 function pointToPolyline(map, point, points) {
   // 计算点到折线第一条线段的距离
-  var distance = pointToLine(point, points[0], points[1]);
-  // 当折线是一条线段时，返回点到线的距离
-  if (points.length === 2) {
-    return distance;
-  }
-  if (points.length > 2) {
-    // 遍历点到剩下的每个折线线段的距离,对比最短距离
-    for (var i = 1; i < points.length - 1; i++) {
-      var distance1 = pointToLine(point, points[i], points[i + 1]);
-      distance = distance < distance1 ? distance : distance1;
+  if (point instanceof Array && point.length === 2) {
+    var distance = pointToLine(map, point, points[0], points[1]);
+    // 当折线是一条线段时，返回点到线的距离
+    if (points.length === 2) {
       return distance;
     }
+    if (points.length > 2) {
+      // 遍历点到剩下的每个折线线段的距离,对比最短距离
+      for (var i = 1; i < points.length - 1; i++) {
+        var distance1 = pointToLine(map, point, points[i], points[i + 1]);
+        distance = distance < distance1 ? distance : distance1;
+        return distance;
+      }
+    }
+  } else {
+    console.warn('point must be a array & point.length === 2');
+    return null;
   }
 }
 
@@ -4455,14 +5008,221 @@ function judgePolygonsOverlap(polyA, polyB) {
   }
   return judgePolygonsIntersectant(polyA, polyB) || judgePointContainByPolygon(polyA, polyB);
 }
+
+/**
+ * 根据三个GPS和对应的坐标信息计算比例尺
+ * @param {HDMap} 地图对象
+ * @param {JSON} lonlats { 'lonlatA':[],'lonlatB':[],'lonlatC':[] }
+ * @param {JSON} points  { 'pointA':[], 'pointB':[], 'pointC':[] }
+ * @return {Number} scale
+ */
+function getScaleByGPS(map, lonlats, points) {
+  // 判断经纬度范围
+  for (var key in lonlats) {
+    if (lonlats[key][0] > 180 || lonlats[key][0] < -180 || lonlats[key][1] > 90 || lonlats[key][1] < -90) {
+      console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
+      return null;
+    }
+  }
+  // 计算两个点的距离
+  function toSqrt(a, b) {
+    var sqrt = Math.sqrt(Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2));
+    return sqrt;
+  }
+
+  var A = points['pointA'];
+  var B = points['pointB'];
+  var C = points['pointC'];
+  var mlonlatA = map.translate_4326_to_3857(lonlats['lonlatA']);
+  var mlonlatB = map.translate_4326_to_3857(lonlats['lonlatB']);
+  var mlonlatC = map.translate_4326_to_3857(lonlats['lonlatC']);
+
+  // A、B两点确定比例尺
+  var scaleAB = toSqrt(mlonlatA, mlonlatB) / toSqrt(A, B);
+
+  // A、C两点确定比例尺
+  var scaleAC = toSqrt(mlonlatA, mlonlatC) / toSqrt(A, C);
+
+  // B、C两点确定比例尺
+  var scaleBC = toSqrt(mlonlatB, mlonlatC) / toSqrt(B, C);
+
+  var scale = (scaleAB + scaleAC + scaleBC) / 3;
+  return scale;
+}
+
+/**
+ * 根据三个GPS和对应的坐标信息计算中心点GPS
+ * @param {HDMap} 地图对象
+ * @param {JSON} lonlats { 'lonlatA':[],'lonlatB':[],'lonlatC':[] }
+ * @param {JSON} points  { 'pointA':[], 'pointB':[], 'pointC':[] }
+ * @return {Array} 中心点GPS
+ */
+function getCenterGPS(map, lonlats, points) {
+  // 判断经纬度范围
+  for (var key in lonlats) {
+    if (lonlats[key][0] > 180 || lonlats[key][0] < -180 || lonlats[key][1] > 90 || lonlats[key][1] < -90) {
+      console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
+      return null;
+    }
+  }
+  // 光栅点位转换4326
+  function toArr(point, lonlat, scale, arcAngle) {
+    var angle = Math.atan2(point[1], point[0]) + arcAngle;
+    var r = Math.sqrt(Math.pow(point[0], 2) + Math.pow(point[1], 2));
+    var arr = [];
+    arr[0] = lonlat[0] - r * Math.cos(angle) * scale;
+    arr[1] = lonlat[1] - r * Math.sin(angle) * scale;
+    return arr;
+  }
+
+  var A = points['pointA'];
+  var B = points['pointB'];
+  var C = points['pointC'];
+  var scale = getScaleByGPS(map, lonlats, points);
+  var arcAngle = getArcAngle(map, lonlats, points);
+  var mlonlatA = map.translate_4326_to_3857(lonlats['lonlatA']);
+  var mlonlatB = map.translate_4326_to_3857(lonlats['lonlatB']);
+  var mlonlatC = map.translate_4326_to_3857(lonlats['lonlatC']);
+
+  // A点确定中心点
+  var lonlatA = map.translate_3857_to_4326(toArr(A, mlonlatA, scale, arcAngle));
+
+  // B点确定中心点
+  var lonlatB = map.translate_3857_to_4326(toArr(B, mlonlatB, scale, arcAngle));
+
+  // C点确定中心点
+  var lonlatC = map.translate_3857_to_4326(toArr(C, mlonlatC, scale, arcAngle));
+
+  var lon = (lonlatA[0] + lonlatB[0] + lonlatC[0]) / 3;
+  var lat = (lonlatA[1] + lonlatB[1] + lonlatC[1]) / 3;
+  var centerGPS = [lon, lat];
+  return centerGPS;
+}
+
+/**
+ * 根据三个GPS和对应的坐标信息计算旋转弧度
+ * @param {HDMap} 地图对象
+ * @param {JSON} lonlats { 'lonlatA':[],'lonlatB':[],'lonlatC':[] }
+ * @param {JSON} points  { 'pointA':[], 'pointB':[], 'pointC':[] }
+ * @return {Number} 旋转弧度
+ */
+function getArcAngle(map, lonlats, points) {
+  for (var key in lonlats) {
+    if (lonlats[key][0] > 180 || lonlats[key][0] < -180 || lonlats[key][1] > 90 || lonlats[key][1] < -90) {
+      console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90');
+      return null;
+    }
+  }
+
+  // 计算两点的方位角弧度
+  function toArc(A, B) {
+    var arc = Math.atan2(B[1] - A[1], B[0] - A[0]);
+    return arc;
+  }
+
+  var A = points['pointA'];
+  var B = points['pointB'];
+  var C = points['pointC'];
+  var mlonlatA = map.translate_4326_to_3857(lonlats['lonlatA']);
+  var mlonlatB = map.translate_4326_to_3857(lonlats['lonlatB']);
+  var mlonlatC = map.translate_4326_to_3857(lonlats['lonlatC']);
+
+  // 根据AB两点计算弧度
+  var arcAB = toArc(mlonlatB, mlonlatA) - toArc(B, A);
+
+  // 根据AC两点计算弧度
+  var arcAC = toArc(mlonlatC, mlonlatA) - toArc(C, A);
+
+  // 根据BC两点计算弧度
+  var arcBC = toArc(mlonlatC, mlonlatB) - toArc(C, B);
+
+  // 以arcAB为基准，校正arcAC和arcBC的值，使其处于相同的PI范围内
+  if (Math.abs(arcAC - arcAB) > Math.PI) {
+    arcAC = arcAC > arcAB ? arcAC - 2 * Math.PI : arcAC + 2 * Math.PI;
+  }
+  if (Math.abs(arcBC - arcAB) > Math.PI) {
+    arcBC = arcBC > arcAB ? arcBC - 2 * Math.PI : arcBC + 2 * Math.PI;
+  }
+  var arcAngle = ((arcAB + arcAC + arcBC) / 3 + 2 * Math.PI) % (2 * Math.PI);
+  return arcAngle;
+}
+
+/**
+ * 根据三个GPS和对应的坐标信息获取比例尺、中心点GPS、旋转弧度属性集合
+ * @param {HDMap} 地图对象
+ * @param {JSON} lonlats { 'lonlatA':[],'lonlatB':[],'lonlatC':[] }
+ * @param {JSON} points { 'pointA':[], 'pointB':[], 'pointC':[] }
+ * @return {JSON} 
+ */
+function getMapProperty(map, lonlats, points) {
+  var attributes = {};
+  attributes.centerGPS = getCenterGPS(map, lonlats, points);
+  attributes.scale = getScaleByGPS(map, lonlats, points);
+  attributes.arcAngle = getArcAngle(map, lonlats, points);
+  return attributes;
+}
+
+/**
+ * 根据两点坐标及真实距离计算比例尺
+ * @param {Array} pointA 
+ * @param {Array} pointB 
+ * @param {Number} distance 
+ * @returns {Number}
+ */
+// function getScaleBySize (pointA, pointB, distance) {
+//   let sizeDistance = Math.sqrt(Math.pow(pointA[0] - pointB[0], 2) + Math.pow(pointA[1] - pointB[1], 2))
+//   let scale = sizeDistance / distance
+//   return scale
+// }
+
+/**
+ * 根据地图的长宽和真实长宽进行比例尺计算
+ * @param {*} sizeWidth
+ * @param {*} sizeHeight
+ * @param {*} realWidth
+ * @param {*} realHeight
+ * @return {Number} scale分母
+ */
+function getScaleBySize(sizeWidth, sizeHeight, realWidth, realHeight) {
+  // 根据图片宽高和真实宽高获取比例尺
+  // let width = sizeWidth * 0.0254 / 72
+  var widthScale = sizeWidth / realWidth;
+  var heightScale = sizeHeight / realHeight;
+
+  // 根据两个比例尺求出平均比例尺
+  var scale = (widthScale + heightScale) / 2;
+  return scale;
+}
+/**
+ * 获取地图可视区域的中心
+ * @param {Object} map 地图对象
+ * @return {Array} visibleAreaCenter 地图可视区域的中心坐标：[x,y]
+ */
+function getVisibleAreaCenter(map) {
+  var extent$$1 = map.getMap().getView().calculateExtent(map.getMap().getSize());
+  var visibleAreaCenter = ol.extent.getCenter(extent$$1);
+  return visibleAreaCenter;
+}
+/**
+ * 判断点位越界
+ * @param {Object} map 地图对象
+ * @param {Object} id 区域id
+ * @param {Object} point 要判断的点的坐标:[x,y]
+ * @return {Boolean} boolean ture表示在区域内，false表示在区域外
+ */
+function pointTransboundary(map, id, point) {
+  var region = map.getMarkerBylayerKey(id, 'gisLayer');
+  var boolean = region.getGeometry().intersectsCoordinate(point);
+  return boolean;
+}
 var utils = {
   outOfChina: outOfChina,
   getDistanceByGPS: getDistanceByGPS,
-  getDistanceByPoint: getDistanceByPoint,
   getScaleByGPS: getScaleByGPS,
   getCenterGPS: getCenterGPS,
   getScaleBySize: getScaleBySize,
   getAreaCenter: getAreaCenter,
+  getTrianglePoint: getTrianglePoint,
   getMinDistance: getMinDistance,
   getCameraCountPoint: getCameraCountPoint,
   getBroadcastCountPoint: getBroadcastCountPoint,
@@ -4474,7 +5234,11 @@ var utils = {
   getParkingCoordinates: getParkingCoordinates,
   getParkingLockPoint: getParkingLockPoint,
   pointToPolyline: pointToPolyline,
-  judgePolygonsOverlap: judgePolygonsOverlap
+  judgePolygonsOverlap: judgePolygonsOverlap,
+  getArcAngle: getArcAngle,
+  getMapProperty: getMapProperty,
+  getVisibleAreaCenter: getVisibleAreaCenter,
+  pointTransboundary: pointTransboundary
 };
 
 /**
@@ -4508,13 +5272,26 @@ ol.layer.HDVector = function (layerKey, optOptions) {
   ol.layer.Vector.call(this,
   /** @type {olx.layer.LayerOptions} */baseOptions);
   this.layerKey = layerKey;
+  this.visibleFlag = true;
 };
 ol.inherits(ol.layer.HDVector, ol.layer.Vector);
 
 ol.layer.HDVector.prototype.getLayerKey = function () {
   return this.layerKey;
 };
-
+/**
+ * 此参数指示该层是否被人为控制显示状态：true可显示，false不可显示
+ */
+ol.layer.HDVector.prototype.getVisibleFlag = function () {
+  return this.visibleFlag;
+};
+/**
+ * 此参数指示该层是否被人为控制显示状态：true可显示，false不可显示
+ * params {Boolean}
+ */
+ol.layer.HDVector.prototype.setVisibleFlag = function (flag) {
+  this.visibleFlag = flag;
+};
 /**
  * 此类是对ol.Feature的一个扩展，在ol3中已经没有了marker这个概念，
  * 想在地图上添加设备点位，需要一个feature，为了迎合业务，所以对其

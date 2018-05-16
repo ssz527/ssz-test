@@ -1,12 +1,6 @@
 <template>
   <div>
     <div class="map-container">
-      <div id="bitmap">
-        <div id="popup" class="ol-popup">
-          <a href="#" id="popup-closer" class="ol-popup-closer"></a>
-          <div id="popup-content"></div>
-        </div>
-      </div>
       <div id="mapBaidu">
         <div id="popup2" class="ol-popup">
           <a href="#" id="popup-closer2" class="ol-popup-closer"></a>
@@ -15,6 +9,12 @@
       </div>
       <div id="baidumap"></div>
 
+      <div id="bitmap">
+        <div id="popup" class="ol-popup">
+          <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+          <div id="popup-content"></div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -87,5 +87,9 @@ export default {
 
 #baidumap {
   height: 50%;
+}
+
+#mapBaidu {
+  height: 300px;
 }
 </style>

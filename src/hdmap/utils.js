@@ -11,6 +11,7 @@
  * @return {Boolean}
  */
 import { outOfChina } from '../extend-files/baidu-projection.js'
+import { warnLogTag } from './commonConfig'
 
 /**
  * 通过两点的GPS坐标获取两点间的距离
@@ -26,209 +27,16 @@ function getDistanceByGPS (map, lonlatA, lonlatB) {
     (lonlatB[0] > 180 || lonlatB[0] < -180) ||
     (lonlatB[1] > 90 || lonlatB[1] < -90)
   ) {
-    console.warn(
-      'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
-    )
+    console.warn(warnLogTag + 'Error: Longitude range: -180 to 180, latitude range: -90 to 90')
     return
   }
-  // // 经纬度转换成三角函数中度分表形式
-  // function rad(d) {
-  //   return d * Math.PI / 180.0
-  // }
-  // let radLat1 = rad(lonlatA[1])
-  // let radLat2 = rad(lonlatB[1])
-  // let a = radLat1 - radLat2
-  // let b = rad(lonlatA[0]) - rad(lonlatB[0])
-  // let distance =
-  //   2 *
-  //   Math.asin(
-  //     Math.sqrt(
-  //       Math.pow(Math.sin(a / 2), 2) +
-  //         Math.cos(radLat1) * Math.cos(radLat2) * Math.pow(Math.sin(b / 2), 2)
-  //     )
-  //   )
-  // distance = Math.round(distance * 6378137)
   let distance = map.getDistance(lonlatA, lonlatB)
   return distance
 }
 
-/**
- * 根据两点的坐标计算两点距离
- * @param {HDMap} 地图对象
- * @param {JSON} lonlats { 'lonlatA':[],'lonlatB':[],'lonlatC':[] }
- * @param {JSON} points  { 'pointA':[], 'pointB':[], 'pointC':[] }
- * @return {Number} 距离 单位m
- */
-function getDistanceByPoint (map, lonlats, points) {
-  // 判断经纬度范围
-  for (var key in lonlats) {
-    if ((lonlats[key][0] > 180 || lonlats[key][0] < -180) || (lonlats[key][1] > 90 || lonlats[key][1] < -90)) {
-      console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90')
-      return null
-    }
-  }
-  // 光栅图坐标换算经纬度
-  let centerGPS = getCenterGPS(lonlats, points) // 中心点GPS坐标
-  let mcenter = map.translate_4326_to_3857(centerGPS) // 中心点GPS坐标转光栅坐标
-  let scale = getScaleByGPS(map, lonlats, points) // 获取偏移比例尺
-
-  // 修正AB两点的坐标位置
-  let pntAX = points['pointA'][0] * scale
-  let pntAY = points['pointA'][1] * scale
-  let pntBX = points['pointB'][0] * scale
-  let pntBY = points['pointB'][1] * scale
-  let mlonlatA = [mcenter[0] + pntAX, mcenter[1] + pntAY]
-  let lonlatA = map.translate_3857_to_4326(mlonlatA) // 点位A的GPS坐标
-
-  let mlonlatB = [mcenter[0] + pntBX, mcenter[1] + pntBY]
-  let lonlatB = map.translate_3857_to_4326(mlonlatB) // 点位B的GPS坐标
-
-  let distance = map.getDistance(lonlatA, lonlatB)
-  return distance
-}
-
-/**
- * 根据三个GPS和对应的坐标信息计算修正地图的比例尺
- * @param {HDMap} 地图对象
- * @param {JSON} lonlats { 'lonlatA':[],'lonlatB':[],'lonlatC':[] }
- * @param {JSON} points  { 'pointA':[], 'pointB':[], 'pointC':[] }
- * @return {Number} scale分母
- */
-function getScaleByGPS (map, lonlats, points) {
-  // 判断经纬度范围
-  for (var key in lonlats) {
-    if ((lonlats[key][0] > 180 || lonlats[key][0] < -180) || (lonlats[key][1] > 90 || lonlats[key][1] < -90)) {
-      console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90')
-      return null
-    }
-  }
-  // 经纬度换算光栅图坐标
-  let centerGPS = getCenterGPS(lonlats, points) // 中心点GPS坐标
-  let mcenter = map.translate_4326_to_3857(centerGPS) // 中心点GPS坐标转光栅坐标
-  let mlonlatA = map.translate_4326_to_3857(lonlats['lonlatA'])
-  let mlonlatB = map.translate_4326_to_3857(lonlats['lonlatB'])
-  let mlonlatC = map.translate_4326_to_3857(lonlats['lonlatC'])
-
-  let pntAX = mlonlatA[0] - mcenter[0]
-  let pntAY = mlonlatA[1] - mcenter[1]
-  let pntBX = mlonlatB[0] - mcenter[0]
-  let pntBY = mlonlatB[1] - mcenter[1]
-  let pntCX = mlonlatC[0] - mcenter[0]
-  let pntCY = mlonlatC[1] - mcenter[1]
-
-  let scaleAX = pntAX / points['pointA'][0]
-  let scaleAY = pntAY / points['pointA'][1]
-  let scaleBX = pntBX / points['pointB'][0]
-  let scaleBY = pntBY / points['pointB'][1]
-  let scaleCX = pntCX / points['pointC'][0]
-  let scaleCY = pntCY / points['pointC'][1]
-  let scaleA = (scaleAX + scaleAY) / 2
-  let scaleB = (scaleBX + scaleBY) / 2
-  let scaleC = (scaleCX + scaleCY) / 2
-  var scale = (scaleA + scaleB + scaleC) / 3
-  return scale
-}
-
-/**
- * 根据三个GPS点进行中心点计算
- * @param {JSON} lonlats { 'lonlatA':[],'lonlatB':[],'lonlatC':[] }
- * @param {JSON} points  { 'pointA':[], 'pointB':[], 'pointC':[] }
- * @return {Array}
- */
-function getCenterGPS (lonlats, points) {
-  // 判断GPS点的范围
-  for (var key in lonlats) {
-    if ((lonlats[key][0] > 180 || lonlats[key][0] < -180) || (lonlats[key][1] > 90 || lonlats[key][1] < -90)) {
-      console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90')
-      return null
-    }
-  }
-  // 判断点是否在同一水平上
-  if (
-    (lonlats['lonlatA'][0] === lonlats['lonlatB'][0] ||
-      lonlats['lonlatA'][0] === lonlats['lonlatC'][0] ||
-      lonlats['lonlatB'][0] === lonlats['lonlatC'][0]) ||
-    (lonlats['lonlatA'][1] === lonlats['lonlatB'][1] ||
-      lonlats['lonlatA'][1] === lonlats['lonlatC'][1] ||
-      lonlats['lonlatB'][1] === lonlats['lonlatC'][1])
-  ) {
-    console.warn(
-      'The latitude and longitude of two points can\'t be the same'
-    )
-    return null
-  }
-  // 计算AB两个GPS的中心点
-  let lon1 =
-    lonlats['lonlatA'][0] - (lonlats['lonlatB'][0] - lonlats['lonlatA'][0]) * points['pointA'][0] / (points['pointB'][0] - points['pointA'][0])
-  let lat1 =
-    lonlats['lonlatB'][1] -
-    (lonlats['lonlatB'][1] - lonlats['lonlatA'][1]) *
-    points['pointB'][1] /
-    (points['pointB'][1] - points['pointA'][1])
-
-  // 计算AC两个GPS的中心点
-  let lon2 =
-    lonlats['lonlatA'][0] -
-    (lonlats['lonlatC'][0] - lonlats['lonlatA'][0]) *
-    points['pointA'][0] /
-    (points['pointC'][0] - points['pointA'][0])
-  let lat2 =
-    lonlats['lonlatC'][1] -
-    (lonlats['lonlatC'][1] - lonlats['lonlatA'][1]) *
-    points['pointC'][1] /
-    (points['pointC'][1] - points['pointA'][1])
-
-  // 计算BC两个GPS的中心点
-  let lon3 =
-    lonlats['lonlatC'][0] -
-    (lonlats['lonlatB'][0] - lonlats['lonlatC'][0]) *
-    points['pointC'][0] /
-    (points['pointB'][0] - points['pointC'][0])
-  let lat3 =
-    lonlats['lonlatB'][1] -
-    (lonlats['lonlatB'][1] - lonlats['lonlatC'][1]) *
-    points['pointB'][1] /
-    (points['pointB'][1] - points['pointC'][1])
-
-  // 根据三个中心点算出平均值
-  let lon = (lon1 + lon2 + lon3) / 3
-  let lat = (lat1 + lat2 + lat3) / 3
-  let centerGPS = [lon, lat]
-  if (lon > 180 || lon < -180 || (lat > 90 || lat < -90)) {
-    console.warn(
-      'Error: centerGPS: [' +
-      centerGPS +
-      '] The longitude must be between -180 and 180, latitude must be between -90 and 90'
-    )
-    return false
-  } else {
-    return centerGPS
-  }
-}
-
-/**
- * 根据地图的长宽和真实长宽进行比例尺计算
- * @param {*} sizeWidth
- * @param {*} sizeHeight
- * @param {*} realWidth
- * @param {*} realHeight
- * @return {Number} scale分母
- */
-function getScaleBySize (sizeWidth, sizeHeight, realWidth, realHeight) {
-  // 根据图片宽高和真实宽高获取比例尺
-  let width = sizeWidth * 0.0254 / 72
-  let height = sizeHeight * 0.0254 / 72
-  let widthScale = realWidth / width
-  let heightScale = realHeight / height
-
-  // 根据两个比例尺求出平均比例尺
-  let scale = (widthScale + heightScale) / 2
-  console.log(scale)
-  return scale
-}
 /**
  * 获取地图某个区域（多边形）重心
- * @param {Array} points 多边形各点的坐标数组
+ * @param {Array} points 多边形各点的坐标数组 [[x1,y1],[x2,y2],[x3,y3]....]  二维数组
  * @return {Array} areaCenter  重心坐标
  */
 function getAreaCenter (points) {
@@ -258,10 +66,24 @@ function getAreaCenter (points) {
   areaCenter[1] = Gy
   return areaCenter
 }
-
+/**
+ * 获取三角形重心
+ * @param {Array} points 三角形各点的坐标数组 [[x1,y1],[x2,y2],[x3,y3]]  二维数组
+ * @return {Array} 三角形重心trianglePoint:[x,y]
+ */
+function getTrianglePoint (points) {
+  var trianglePoint = [0, 0]
+  for (let i = 0; i < points.length; i++) {
+    trianglePoint[0] += points[i][0]
+    trianglePoint[1] += points[i][1]
+  }
+  trianglePoint[0] = trianglePoint[0] / 3
+  trianglePoint[1] = trianglePoint[1] / 3
+  return trianglePoint
+}
 /**
  * 获取重心点到多边形最近某个点的最短x轴,y轴的距离
- * @param {Array} points 多边形各点的坐标数组
+ * @param {Array} points 多边形各点的坐标数组 [[x1,y1],[x2,y2],[x3,y3]....]  二维数组
  * @return {Array} minDistance  重心点到多边形最近点的X，Y 轴绝对值距离
  */
 function getMinDistance (points) {
@@ -285,8 +107,26 @@ function getMinDistance (points) {
   return minDistance
 }
 /**
+ * 根据三角形重心是否在区域范围内求点位坐标
+ * @param {Array} points 区域多边形各点的坐标数组 [[x1,y1],[x2,y2],[x3,y3]....]  二维数组
+ * @param {Array} triangle 形成三角形的第三个点 一维数组
+ * @param {Array} interceptingCoordinate 形成三角形的前两个点  二维数组
+ * @return {Array} trianglePoint  点位坐标 一维数组 [x,y]
+ */
+function recursionPoint (points, triangle, interceptingCoordinate) {
+  interceptingCoordinate.push(triangle)
+  // 获取三角形重心
+  var trianglePoint = getTrianglePoint(interceptingCoordinate)
+  var judge = judgePointInsidePolygon(trianglePoint, points)
+  if (judge === 'in' || judge === 'on') {
+    return trianglePoint
+  }
+  interceptingCoordinate.pop()
+  return recursionPoint(points, trianglePoint, interceptingCoordinate)
+}
+/**
  * 获取摄像头坐标
- * @param {Array} points 多边形各点的坐标数组
+ * @param {Array} points 多边形各点的坐标数组 [[x1,y1],[x2,y2],[x3,y3]....]  二维数组
  * @return {Array} cameraCountPoint  摄像头坐标
  */
 function getCameraCountPoint (points) {
@@ -296,11 +136,19 @@ function getCameraCountPoint (points) {
   var cameraCountPointY = getAreaCenter(points)[1]
   cameraCountPoint[0] = cameraCountPointX
   cameraCountPoint[1] = cameraCountPointY
-  return cameraCountPoint
+  var isTrue = judgePointInsidePolygon(cameraCountPoint, points)
+  if (isTrue === 'on' || isTrue === 'in') {
+    return cameraCountPoint
+  } else {
+    // 截取顶点坐标数组前两个
+    var interceptingCoordinate = points.slice(0, 2)
+    cameraCountPoint = recursionPoint(points, points[2], interceptingCoordinate)
+    return cameraCountPoint
+  }
 }
 /**
  * 获取广播坐标
- * @param {Array} points 多边形各点的坐标数组
+ * @param {Array} points 多边形各点的坐标数组 [[x1,y1],[x2,y2],[x3,y3]....]  二维数组
  * @return {Array} broadcastCountPoint  广播坐标
  */
 function getBroadcastCountPoint (points) {
@@ -311,11 +159,20 @@ function getBroadcastCountPoint (points) {
   var broadcastCountPointY = getAreaCenter(points)[1]
   broadcastCountPoint[0] = broadcastCountPointX
   broadcastCountPoint[1] = broadcastCountPointY
-  return broadcastCountPoint
+  // return broadcastCountPoint
+  var isTrue = judgePointInsidePolygon(broadcastCountPoint, points)
+  if (isTrue === 'on' || isTrue === 'in') {
+    return broadcastCountPoint
+  } else {
+    // 截取顶点坐标数组第二，第三个
+    var interceptingCoordinate1 = points.slice(1, 3)
+    broadcastCountPoint = recursionPoint(points, points[3], interceptingCoordinate1)
+    return broadcastCountPoint
+  }
 }
 /**
  * 获取报警坐标
- * @param {Array} points 多边形各点的坐标数组
+ * @param {Array} points 多边形各点的坐标数组 [[x1,y1],[x2,y2],[x3,y3]....]  二维数组
  * @return {Array} waringConutPoint  报警坐标
  */
 function getWarningConutPoint (points) {
@@ -325,12 +182,27 @@ function getWarningConutPoint (points) {
   var waringConutPointY = getAreaCenter(points)[1] - getMinDistance(points)[1]
   waringConutPoint[0] = waringConutPointX
   waringConutPoint[1] = waringConutPointY
-  return waringConutPoint
+  // return waringConutPoint
+  var isTrue = judgePointInsidePolygon(waringConutPoint, points)
+  if (isTrue === 'on' || isTrue === 'in') {
+    return waringConutPoint
+  } else {
+    var interceptingCoordinate2 = []
+    if (points.length === 4) {
+      interceptingCoordinate2[0] = points[2]
+      interceptingCoordinate2[1] = points[3]
+      waringConutPoint = recursionPoint(points, points[0], interceptingCoordinate2)
+    } else {
+      interceptingCoordinate2 = points.slice(2, 4)
+      waringConutPoint = recursionPoint(points, points[3], interceptingCoordinate2)
+    }
+    return waringConutPoint
+  }
 }
 /**
  * 射线法判断点是否在多边形内部
  * @param {Array} point 待判断的点，格式：[X坐标, Y坐标]
- * @param {Array} poly 多边形顶点，数组成员的格式同 point
+ * @param {Array} poly 多边形顶点，二维数组 poly:[[X1, Y1],[X2, Y2],[X3, Y3].......]
  * @return {String} 点 point 和多边形 poly 的几何关系
  */
 function judgePointInsidePolygon (point, poly) {
@@ -367,10 +239,13 @@ function judgePointInsidePolygon (point, poly) {
     // 射线穿过多边形边界的次数为奇数时点在多边形内
     return f ? 'in' : 'out'
   }
-  // console.log(poly)
-  var result = rayMethod(point, poly)
-  // console.log(result)
-  return result
+  if (point instanceof Array && point.length === 2) {
+    var result = rayMethod(point, poly)
+    return result
+  } else {
+    console.warn('点位越界传参有误： position must be a array && position.length === 2')
+    return null
+  }
 }
 
 /**
@@ -380,9 +255,20 @@ function judgePointInsidePolygon (point, poly) {
  * @return {Array} markersInfo 点位信息数组[{},{}]
  */
 function getFeaturesInExtent (map, coordinate) {
-  // 设置半径根据地图放大等级而相应的缩小
-  var zoom = map.getZoom()
-  var distance = 24 / Math.pow(2, zoom - 3)
+  var resolution
+  var distance
+  if (map.mapConfig.gisEngine === 'tile') {
+    // 设置半径根据地图分辨率等级变大而相应的变大
+    resolution = map.getMap().getView().getResolution()
+    if (resolution === 1) {
+      distance = 32
+    } else {
+      distance = 64 * (Math.log2(resolution))
+    }
+  } else {
+    var zoom = map.getZoom()
+    distance = 24 / Math.pow(2, zoom - 3)
+  }
   // 设置区域范围
   var extent = [
     coordinate[0] - distance,
@@ -396,9 +282,11 @@ function getFeaturesInExtent (map, coordinate) {
   // 保存点位图层信息
   var markersInfo = []
   for (var key in layers) {
-    // 选定区域
-    var layer = layers[key].getSource().getFeaturesInExtent(extent)
-    layersInfo.push(layer)
+    if (layers[key].getVisible()) {
+      // 选定区域
+      var layer = layers[key].getSource().getFeaturesInExtent(extent)
+      layersInfo.push(layer)
+    }
   }
   // 排空
   var resdata = layersInfo.filter(function (item) {
@@ -410,6 +298,7 @@ function getFeaturesInExtent (map, coordinate) {
       const ele = element[j]
       // 判断是否有点位信息
       if (ele.extProperties && ele.extProperties.markerType) {
+        ele.extProperties.layerkey = ele.getLayerKey()
         markersInfo.push(ele.extProperties)
       }
     }
@@ -549,18 +438,23 @@ function getParkingLockPoint (borderPoints, rotate) {
  */
 function pointToPolyline (map, point, points) {
   // 计算点到折线第一条线段的距离
-  let distance = pointToLine(point, points[0], points[1])
-  // 当折线是一条线段时，返回点到线的距离
-  if (points.length === 2) {
-    return distance
-  }
-  if (points.length > 2) {
-    // 遍历点到剩下的每个折线线段的距离,对比最短距离
-    for (var i = 1; i < points.length - 1; i++) {
-      let distance1 = pointToLine(point, points[i], points[i + 1])
-      distance = distance < distance1 ? distance : distance1
+  if (point instanceof Array && point.length === 2) {
+    let distance = pointToLine(map, point, points[0], points[1])
+    // 当折线是一条线段时，返回点到线的距离
+    if (points.length === 2) {
       return distance
     }
+    if (points.length > 2) {
+      // 遍历点到剩下的每个折线线段的距离,对比最短距离
+      for (var i = 1; i < points.length - 1; i++) {
+        let distance1 = pointToLine(map, point, points[i], points[i + 1])
+        distance = distance < distance1 ? distance : distance1
+        return distance
+      }
+    }
+  } else {
+    console.warn('point must be a array & point.length === 2')
+    return null
   }
 }
 
@@ -656,14 +550,221 @@ function judgePolygonsOverlap (polyA, polyB) {
     judgePointContainByPolygon(polyA, polyB)
   );
 }
+
+/**
+ * 根据三个GPS和对应的坐标信息计算比例尺
+ * @param {HDMap} 地图对象
+ * @param {JSON} lonlats { 'lonlatA':[],'lonlatB':[],'lonlatC':[] }
+ * @param {JSON} points  { 'pointA':[], 'pointB':[], 'pointC':[] }
+ * @return {Number} scale
+ */
+function getScaleByGPS (map, lonlats, points) {
+  // 判断经纬度范围
+  for (var key in lonlats) {
+    if ((lonlats[key][0] > 180 || lonlats[key][0] < -180) || (lonlats[key][1] > 90 || lonlats[key][1] < -90)) {
+      console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90')
+      return null
+    }
+  }
+  // 计算两个点的距离
+  function toSqrt (a, b) {
+    var sqrt = Math.sqrt(Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2))
+    return sqrt
+  }
+
+  let A = points['pointA']
+  let B = points['pointB']
+  let C = points['pointC']
+  let mlonlatA = map.translate_4326_to_3857(lonlats['lonlatA'])
+  let mlonlatB = map.translate_4326_to_3857(lonlats['lonlatB'])
+  let mlonlatC = map.translate_4326_to_3857(lonlats['lonlatC'])
+
+  // A、B两点确定比例尺
+  let scaleAB = toSqrt(mlonlatA, mlonlatB) / toSqrt(A, B)
+
+  // A、C两点确定比例尺
+  let scaleAC = toSqrt(mlonlatA, mlonlatC) / toSqrt(A, C)
+
+  // B、C两点确定比例尺
+  let scaleBC = toSqrt(mlonlatB, mlonlatC) / toSqrt(B, C)
+
+  var scale = (scaleAB + scaleAC + scaleBC) / 3
+  return scale
+}
+
+/**
+ * 根据三个GPS和对应的坐标信息计算中心点GPS
+ * @param {HDMap} 地图对象
+ * @param {JSON} lonlats { 'lonlatA':[],'lonlatB':[],'lonlatC':[] }
+ * @param {JSON} points  { 'pointA':[], 'pointB':[], 'pointC':[] }
+ * @return {Array} 中心点GPS
+ */
+function getCenterGPS (map, lonlats, points) {
+  // 判断经纬度范围
+  for (var key in lonlats) {
+    if ((lonlats[key][0] > 180 || lonlats[key][0] < -180) || (lonlats[key][1] > 90 || lonlats[key][1] < -90)) {
+      console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90')
+      return null
+    }
+  }
+  // 光栅点位转换4326
+  function toArr (point, lonlat, scale, arcAngle) {
+    var angle = Math.atan2(point[1], point[0]) + arcAngle
+    var r = Math.sqrt(Math.pow(point[0], 2) + Math.pow(point[1], 2))
+    let arr = []
+    arr[0] = lonlat[0] - r * Math.cos(angle) * scale
+    arr[1] = lonlat[1] - r * Math.sin(angle) * scale
+    return arr
+  }
+
+  let A = points['pointA']
+  let B = points['pointB']
+  let C = points['pointC']
+  var scale = getScaleByGPS(map, lonlats, points)
+  var arcAngle = getArcAngle(map, lonlats, points)
+  let mlonlatA = map.translate_4326_to_3857(lonlats['lonlatA'])
+  let mlonlatB = map.translate_4326_to_3857(lonlats['lonlatB'])
+  let mlonlatC = map.translate_4326_to_3857(lonlats['lonlatC'])
+
+  // A点确定中心点
+  var lonlatA = map.translate_3857_to_4326(toArr(A, mlonlatA, scale, arcAngle))
+
+  // B点确定中心点
+  var lonlatB = map.translate_3857_to_4326(toArr(B, mlonlatB, scale, arcAngle))
+
+  // C点确定中心点
+  var lonlatC = map.translate_3857_to_4326(toArr(C, mlonlatC, scale, arcAngle))
+
+  let lon = (lonlatA[0] + lonlatB[0] + lonlatC[0]) / 3
+  let lat = (lonlatA[1] + lonlatB[1] + lonlatC[1]) / 3
+  var centerGPS = [lon, lat]
+  return centerGPS
+}
+
+/**
+ * 根据三个GPS和对应的坐标信息计算旋转弧度
+ * @param {HDMap} 地图对象
+ * @param {JSON} lonlats { 'lonlatA':[],'lonlatB':[],'lonlatC':[] }
+ * @param {JSON} points  { 'pointA':[], 'pointB':[], 'pointC':[] }
+ * @return {Number} 旋转弧度
+ */
+function getArcAngle (map, lonlats, points) {
+  for (var key in lonlats) {
+    if ((lonlats[key][0] > 180 || lonlats[key][0] < -180) || (lonlats[key][1] > 90 || lonlats[key][1] < -90)) {
+      console.warn('Error: Longitude range: -180 to 180, latitude range: -90 to 90')
+      return null
+    }
+  }
+
+  // 计算两点的方位角弧度
+  function toArc (A, B) {
+    var arc = Math.atan2(B[1] - A[1], B[0] - A[0])
+    return arc
+  }
+
+  let A = points['pointA']
+  let B = points['pointB']
+  let C = points['pointC']
+  let mlonlatA = map.translate_4326_to_3857(lonlats['lonlatA'])
+  let mlonlatB = map.translate_4326_to_3857(lonlats['lonlatB'])
+  let mlonlatC = map.translate_4326_to_3857(lonlats['lonlatC'])
+
+  // 根据AB两点计算弧度
+  var arcAB = toArc(mlonlatB, mlonlatA) - toArc(B, A)
+
+  // 根据AC两点计算弧度
+  var arcAC = toArc(mlonlatC, mlonlatA) - toArc(C, A)
+
+  // 根据BC两点计算弧度
+  var arcBC = toArc(mlonlatC, mlonlatB) - toArc(C, B)
+
+  // 以arcAB为基准，校正arcAC和arcBC的值，使其处于相同的PI范围内
+  if (Math.abs(arcAC - arcAB) > Math.PI) {
+    arcAC = arcAC > arcAB ? arcAC - 2 * Math.PI : arcAC + 2 * Math.PI
+  }
+  if (Math.abs(arcBC - arcAB) > Math.PI) {
+    arcBC = arcBC > arcAB ? arcBC - 2 * Math.PI : arcBC + 2 * Math.PI
+  }
+  var arcAngle = ((arcAB + arcAC + arcBC) / 3 + 2 * Math.PI) % (2 * Math.PI)
+  return arcAngle
+}
+
+/**
+ * 根据三个GPS和对应的坐标信息获取比例尺、中心点GPS、旋转弧度属性集合
+ * @param {HDMap} 地图对象
+ * @param {JSON} lonlats { 'lonlatA':[],'lonlatB':[],'lonlatC':[] }
+ * @param {JSON} points { 'pointA':[], 'pointB':[], 'pointC':[] }
+ * @return {JSON} 
+ */
+function getMapProperty (map, lonlats, points) {
+  var attributes = {}
+  attributes.centerGPS = getCenterGPS(map, lonlats, points)
+  attributes.scale = getScaleByGPS(map, lonlats, points)
+  attributes.arcAngle = getArcAngle(map, lonlats, points)
+  return attributes
+}
+
+/**
+ * 根据两点坐标及真实距离计算比例尺
+ * @param {Array} pointA 
+ * @param {Array} pointB 
+ * @param {Number} distance 
+ * @returns {Number}
+ */
+// function getScaleBySize (pointA, pointB, distance) {
+//   let sizeDistance = Math.sqrt(Math.pow(pointA[0] - pointB[0], 2) + Math.pow(pointA[1] - pointB[1], 2))
+//   let scale = sizeDistance / distance
+//   return scale
+// }
+
+/**
+ * 根据地图的长宽和真实长宽进行比例尺计算
+ * @param {*} sizeWidth
+ * @param {*} sizeHeight
+ * @param {*} realWidth
+ * @param {*} realHeight
+ * @return {Number} scale分母
+ */
+function getScaleBySize (sizeWidth, sizeHeight, realWidth, realHeight) {
+  // 根据图片宽高和真实宽高获取比例尺
+  // let width = sizeWidth * 0.0254 / 72
+  let widthScale = sizeWidth / realWidth
+  let heightScale = sizeHeight / realHeight
+
+  // 根据两个比例尺求出平均比例尺
+  let scale = (widthScale + heightScale) / 2
+  return scale
+}
+/**
+ * 获取地图可视区域的中心
+ * @param {Object} map 地图对象
+ * @return {Array} visibleAreaCenter 地图可视区域的中心坐标：[x,y]
+ */
+function getVisibleAreaCenter (map) {
+  var extent = map.getMap().getView().calculateExtent(map.getMap().getSize())
+  var visibleAreaCenter = ol.extent.getCenter(extent)
+  return visibleAreaCenter
+}
+/**
+ * 判断点位越界
+ * @param {Object} map 地图对象
+ * @param {Object} id 区域id
+ * @param {Object} point 要判断的点的坐标:[x,y]
+ * @return {Boolean} boolean ture表示在区域内，false表示在区域外
+ */
+function pointTransboundary (map, id, point) {
+  var region = map.getMarkerBylayerKey(id, 'gisLayer')
+  var boolean = region.getGeometry().intersectsCoordinate(point)
+  return boolean
+}
 var utils = {
   outOfChina: outOfChina,
   getDistanceByGPS: getDistanceByGPS,
-  getDistanceByPoint: getDistanceByPoint,
   getScaleByGPS: getScaleByGPS,
   getCenterGPS: getCenterGPS,
   getScaleBySize: getScaleBySize,
   getAreaCenter: getAreaCenter,
+  getTrianglePoint: getTrianglePoint,
   getMinDistance: getMinDistance,
   getCameraCountPoint: getCameraCountPoint,
   getBroadcastCountPoint: getBroadcastCountPoint,
@@ -675,6 +776,10 @@ var utils = {
   getParkingCoordinates: getParkingCoordinates,
   getParkingLockPoint: getParkingLockPoint,
   pointToPolyline: pointToPolyline,
-  judgePolygonsOverlap: judgePolygonsOverlap
+  judgePolygonsOverlap: judgePolygonsOverlap,
+  getArcAngle: getArcAngle,
+  getMapProperty: getMapProperty,
+  getVisibleAreaCenter: getVisibleAreaCenter,
+  pointTransboundary: pointTransboundary
 }
 export default utils

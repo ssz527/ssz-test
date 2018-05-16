@@ -25,7 +25,10 @@ import MapInitTest from '@/componentslist/MapInit'
 import TableTest from '@/componentslist/Table'
 import GaodeMap from '@/views/GaodeMap'
 import MutiPopup from '@/views/MutiPopup'
-
+import TileMap from '@/views/TileMap'
+import TileTest from '@/views/TileTest'
+import TileCalculate from '@/views/TileCalculate'
+import VueExcel from '@/views/VueExcel'
 Vue.use(Router)
 
 export default new Router({
@@ -157,6 +160,26 @@ export default new Router({
       path: '/mutipopup',
       name: 'MutiPopup',
       component: MutiPopup
+    },
+    {
+      path: '/tilemap',
+      name: 'TileMap',
+      component: TileMap
+    },
+    {
+      path: '/tiletest',
+      name: 'TileTest',
+      component: TileTest
+    },
+    {
+      path: '/tilecalculate',
+      name: 'TileCalculate',
+      component: TileCalculate
+    },
+    {
+      path: '/vueexcel',
+      name: 'VueExcel',
+      component: VueExcel
     }
   ]
 })

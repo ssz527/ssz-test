@@ -3,15 +3,92 @@ import '../src/hdmap/mapManager.js';
 export const mymap = function (params) {
   let _hdmap = window.map1;
   // let _hdmap2 = hdmap.mapManager['map2'];
+  // 监听层级变化，输出当前层级和分辨率
+  function changeshow (z) {
+    let layerArr = _hdmap.outterLayers
+    // console.log(layerArr)
+    for (let item in layerArr) {
+      let layer = layerArr[item]
+      let lkey = layer.layerKey
+      let zl = lkey.split('_')
+      if (zl[1]) {
+        if (z >= parseInt(zl[1]) && layer.getVisibleFlag()) {
+          _hdmap.setLayerVisible(lkey, true)
+        } else {
+          _hdmap.setLayerVisible(lkey, false)
+        }
+      }
+      // console.log(lkey)
+    }
+  }
+  // _hdmap._map.getView().on('change:resolution', function (e) {
+  //   let z = this.getZoom()
+  //   if (z % 1 === 0) console.log('当前的zoom = ' + z)
+  //   // console.log('当前的分辨率 = ' + this.getResolution())
+  //   changeshow(this.getZoom())
+  // })
+  // 把视图设定到可以看全中国地图的缩放级别
+  // _hdmap._map.getView().fit(ol.proj.transformExtent([76, 18, 140, 56], 'EPSG:4326', 'EPSG:3857'), {
+  //   size: _hdmap._map.getSize(),
+  //   duration: 2000,
+  //   maxZoom: 6
+  // })
   let selFeatures = {};
   let feat = _hdmap.addMarker({
-    id: "12689",
+    id: "12687",
     position: [12615709.175160598, 2656371.0517649446],
-    markerType: "camera",
+    markerType: "guarder",
     name: "test marker",
     imgUrl: "./assets/images/icon.png",
+    size: [32, 48],
+    zoomLevel: 9
+  });
+
+  let feat1 = _hdmap.addMarker({
+    id: "12688",
+    position: [12659889.777509432, 2681595.271099055],
+    markerType: "video",
+    name: "test marker",
+    imgUrl: "./assets/images/u346.png",
     size: [32, 48]
   });
+
+  let feat2 = _hdmap.addMarker({
+    id: "12689",
+    position: [12631760.951100487, 2649185.9711061404],
+    markerType: "camera",
+    name: "test marker",
+    imgUrl: "./assets/images/u4838.png",
+    size: [32, 48],
+    zoomLevel: 10
+  });
+
+  let feat3 = _hdmap.addMarker({
+    id: "12689",
+    position: [12643990.875626117, 2680372.2786464924],
+    markerType: "camera",
+    name: "test marker",
+    imgUrl: "./assets/images/u4838.png",
+    size: [32, 48],
+    zoomLevel: 8
+  });
+
+  console.log(feat1)
+  // 更新点位
+  setTimeout(() => {
+    let feat1 = _hdmap.addMarker({
+      id: "12688",
+      position: [12722873.888816418, 2680983.774872774],
+      markerType: "video",
+      name: "test marker2222222",
+      imgUrl: "./assets/images/u346.png",
+      size: [32, 48]
+    });
+    console.log(feat1)
+    console.log('4秒后获取zoom = ' + _hdmap._map.getView().getZoom())
+  }, 4000)
+  // changeshow(_hdmap._map.getView().getZoom())
+
   // 切换地图测试
   $('#changeMap').on('click', function (e) {
     let flag = $(this).attr('data-flag');
@@ -138,6 +215,10 @@ export const mymap = function (params) {
       optionLine.borderPoints = feat[0].getGeometry().getCoordinates();
     } else {
       optionLine.borderPoints = feat.getGeometry().getCoordinates();
+      let _style = new ol.style.Style({
+        stroke: new ol.style.Stroke({ color: '#f00033', width: 10 })
+      })
+      _hdmap.updateLine({id: feat.id_}, _style)
     }
     
     console.log('保存画线结果：')
@@ -213,6 +294,11 @@ export const mymap = function (params) {
     rotate: -0.5548,
     originId: 10
   };
+  let sty = {
+    // fillColor: 'red',
+    // strokeColor: '#1E90FF',
+    strokeWidth: 2
+  }
   var option1 = {
     id: 'a0222',
     name: 'testareaf22',
@@ -229,6 +315,7 @@ export const mymap = function (params) {
     areaTypesOf: 'parking'
   };
   var opArr = [option, option1]
+  _hdmap.addArea(option, sty)
 
   $('#editShape').on('click', function (e) {
     // _hdmap.closeDrawShapeTool();

@@ -1,4 +1,5 @@
 import "../../src/hdmap/mapManager.js";
+import HDMap from "../../src/hdmap/hdmap.js";
 export const ssz = function () {
   console.log('ssz init')
   if (map3) {
@@ -35,4 +36,25 @@ export const ssz = function () {
   } else {
     console.warn('please init map3')
   }
+
+  // 切片地图控制部分
+  window.tilemap = new hdmap.initMap({
+    gisEngine:"tile",
+    sizeW:13623,
+    sizeH:9796,
+    domId:'tilemap',
+    mapUrl:'http://zc200008pc1.hdsc.com/hdyj/',
+    maxZoom: 9,
+    minZoom: 2,
+    tileMinZoom: 0,
+    tileMaxZoom: 6,
+    mapMaxResolution: 1,
+    center: [0,0],
+    centerGPS:[113.619942,23.304629],
+    scale: 1.21,
+    scaleType: 1,
+    arcAngle: 1.2, //弧度值
+    rangeCoefficient: 1.5
+  })
+  tilemap._map.updateSize()
 }

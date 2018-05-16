@@ -88,4 +88,16 @@ window.onload = function () {
   lly()
   wzkcar()
   llytest()
+
+  /*
+   tab控制器 
+   */
+  $('.tab-list .tab-item').click(function () {
+    var linum = $(this).index()
+    $('.tab-list .tab-item').eq(linum).stop().addClass('active').siblings().removeClass('active')
+    $('.main-container .tab-panel').eq(linum).stop().removeClass('hidden').addClass('shown').siblings().addClass('hidden').removeClass('shown')
+    for (var o in hdmap.mapManager) {
+      hdmap.mapManager[o].getMap().updateSize()
+    }
+  })
 }

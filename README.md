@@ -1,5 +1,5 @@
 # Introduction
-hdmap is a web GIS engine using openlayers 3.X
+hdmap is a web GIS engine using openlayers 4.5.0
 
 # use
 add 

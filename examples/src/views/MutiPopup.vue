@@ -73,7 +73,8 @@ export default {
       center: [112.334403, 39.8],
       centerGPS: [112.334403, 39.8],
       scale: 2,
-      scaleType: 1
+      scaleType: 1,
+      rotate: true
     })
     // 添加点位
     this.addmarker()

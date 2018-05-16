@@ -1,6 +1,6 @@
 import '../src/hdmap/mapManager.js'
 export const wzk1 = function () {
-  window.mapObj = {}
+  window.mapObjwzk1 = {}
   // 测试模块
   var polyCoords = [
     [

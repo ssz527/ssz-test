@@ -4,7 +4,6 @@
  * introduction: 封装openlayers 3.20.0版本做的一个web GIS 引擎
  */
 
-// TODO: 需要对HDMap上的函数名称跟对外暴露接口进行统一
 import {
   bmercResolutions,
   extent,
@@ -13,12 +12,14 @@ import {
   outOfChina,
   delta
 } from '../extend-files/baidu-projection.js'
+import { warnLogTag, infoLogTag } from './commonConfig'
 import eventRegister from './event-register.js'
 import layerManager from './layerManager.js'
+import PerfectScrollbar from 'perfect-scrollbar'
 
 /**
  * 弹窗控制器
-*/
+ */
 var popupCtrl = {
   curZIndex: 1,
   curPopNum: 0,
@@ -72,11 +73,15 @@ function HDMap (options) {
   this.popup_closestatus = false
   // 手动添加的气泡
   this._overlays = []
+  // 点位报警气泡
+  this._warnOverlays = []
   // 存储区域报警定时器
   this.areaTimer = {}
   // 存储电子围栏报警定时器
   this.lineTimer = {}
   this._outPopupWarp = 'hdmap-outterPopup'
+  // 地图分辨率集合，与zoom一一对应
+  this.mapResolutions = []
   /*
     自己添加的图层
     设计为不同类型的点位放在不同的图层上面，方便批量控制的实现
@@ -88,12 +93,12 @@ function HDMap (options) {
     singleclick: {
       default: null
     },
-    dragstart: {
-      default: null
-    },
-    dragend: {
-      default: null
-    },
+    // dragstart: {
+    //   default: null
+    // },
+    // dragend: {
+    //   default: null
+    // },
     selected: {
       default: null
     },
@@ -104,6 +109,15 @@ function HDMap (options) {
       default: null
     },
     pointerdrag: {
+      default: null
+    },
+    zoomChange: {
+      default: null
+    },
+    movestart: {
+      default: null
+    },
+    moveend: {
       default: null
     }
   }
@@ -118,7 +132,6 @@ function HDMap (options) {
   // 初始化地图
   this.mapInit(options)
   // 将初始化的地图对象放到mapManager对象中
-  // hdmap.mapManager[options.domId] = this
   hdmap.mapManager[this.getMapUid()] = this
   // 注册默认监听函数
   this.regDefaulEventCallback()
@@ -133,19 +146,19 @@ function HDMap (options) {
 function optionsVerify (options) {
   if (!options.popupDom) {
     options.popupDom = {
-      popup: 'popup',
-      popupcloser: 'popup-closer',
-      popupcontent: 'popup-content'
+      popup: options.domId + '-popup',
+      popupcloser: options.domId + '-popup-closer',
+      popupcontent: options.domId + '-popup-content'
     }
+  }
+  if (!options.arcAngle) {
+    options.arcAngle = 0
   }
   if (!options.scale) {
     options.scale = 1
   }
   if (!options.scaleType) {
-    options.scaleType = '1'
-  }
-  if (!options.centerGPS) {
-    options.centerGPS = [110.121212, 45.121121]
+    options.scaleType = 0
   }
   if (!options.gisEngine) {
     options.gisEngine = 'baidu'
@@ -158,12 +171,53 @@ function optionsVerify (options) {
     options.satUrl = hdmap.commonConfig.gisConfig.SatUrl
   } else if (options.gisEngine === 'bitmap') {
     if (!options.mapUrl) {
-      console.warn('bitmap without picture url')
+      console.warn(warnLogTag + 'bitmap without picture url')
       return false
     }
     if (!options.sizeH || !options.sizeW) {
-      console.warn('bitmap without size of the picture')
+      console.warn(warnLogTag + 'bitmap without size of the picture')
       return false
+    }
+  } else if (options.gisEngine === 'tile') {
+    if (!options.mapUrl) {
+      console.warn(warnLogTag + 'tilemap param without tile service url')
+      return false
+    }
+    if (!options.sizeH || !options.sizeW) {
+      console.warn(warnLogTag + 'tilemap param without extent of the map')
+      return false
+    }
+    if (!options.centerGPS) {
+      console.warn(warnLogTag + 'tilemap param without centerGPS')
+      return false
+    }
+    if (undefined === options.maxZoom) {
+      options.maxZoom = 6
+    }
+    if (undefined === options.minZoom) {
+      options.minZoom = 0
+    }
+    if (!options.zoom) {
+      options.zoom = 2
+    }
+    if (!options.rangeCoefficient || options.rangeCoefficient < 1) {
+      console.warn(warnLogTag + 'illegal rangeCoefficient, will use default value 2')
+      options.rangeCoefficient = 2
+    }
+    if (!options.mapMaxResolution) {
+      console.warn(warnLogTag + 'illegal mapMaxResolution, will use default value 1')
+      options.mapMaxResolution = 1
+    }
+    if (undefined === options.tileMinZoom) {
+      console.warn(warnLogTag + 'illegal tileMinZoom, will set options.minZoom to tileMinZoom')
+      options.tileMinZoom = options.minZoom
+    }
+    if (undefined === options.tileMaxZoom) {
+      console.warn(warnLogTag + 'illegal tileMaxZoom, will set options.maxZoom to tileMaxZoom')
+      options.tileMaxZoom = options.maxZoom
+    }
+    if (!options.moveTolerance || typeof options.moveTolerance !== 'number') {
+      options.moveTolerance = 5
     }
   }
   return true
@@ -178,6 +232,7 @@ HDMap.prototype.mapInit = function (options) {
   if (optionsVerify(options) === false) {
     return
   }
+  this.copyAttr(this.mapConfig, options)
   this.popupInit(options.popupDom)
   if (options.gisEngine === 'baidu') {
     this.initBaiduMap(options)
@@ -185,14 +240,102 @@ HDMap.prototype.mapInit = function (options) {
     this.initBitmap(options)
   } else if (options.gisEngine === 'gaode') {
     this.initGaodeMap(options)
-  } else {
-    return
+  } else if (options.gisEngine === 'tile') {
+    this.initTileMap(options)
   }
-  this.copyAttr(this.mapConfig, options)
-  // 这里只能在初始化时传入区域信息，并添加到gisLayer上
-  // if (options.gisLayer && options.gisLayer.length > 0) {
-  //   this.initGisLayer(options.gisLayer);
-  // }
+}
+
+/**
+ * 初始化切片地图函数
+ * HDMap.prototype.initTileMap
+ * @param {Object} options
+  参数示例:
+  var options = {
+    // 必传参数
+    gisEngine:"tile",
+    sizeW:13623,
+    sizeH:9796,
+    domId:'map',
+    mapUrl:"http://zc200008pc1.hdsc.com/hdyj/",
+    maxZoom: 10,
+    minZoom: 3,
+    tileMinZoom: 0, // 切片时的最小等级
+    tileMaxZoom: 6, // 切片时的最大等级
+    mapMaxResolution: 1, // 地图最大分辨率
+    centerGPS:[113.619942,23.304629],
+    scale: 1.21,
+    scaleType: 1,
+    arcAngle: 1.2, //弧度值
+    // 可选参数
+    center: [0,0],
+    rangeCoefficient: 2, // 可视区域系数， 大于1的值，将会往左右各按系数延伸扩展
+    moveTolerance: 5 // 此参数优化点击体验，当移动地图超过此值的像素移动时，才认为是拖动事件，否则认为是click
+  };
+ */
+HDMap.prototype.initTileMap = function (options) {
+  var mapExtent = [0.00000000, -options.sizeH, options.sizeW, 0.00000000]
+  var minZoom = options.minZoom
+  var maxZoom = options.maxZoom
+  var mapMinZoom = options.tileMinZoom
+  var mapMaxZoom = options.tileMaxZoom
+  var mapMaxResolution = options.mapMaxResolution
+  var tileExtent = [0.00000000, -options.sizeH, options.sizeW, 0.00000000]
+
+  for (var z = 0; z <= mapMaxZoom; z++) {
+    this.mapResolutions.push(Math.pow(2, mapMaxZoom - z) * mapMaxResolution)
+  }
+
+  var mapTileGrid = new ol.tilegrid.TileGrid({
+    extent: tileExtent,
+    minZoom: mapMinZoom,
+    resolutions: this.mapResolutions
+  })
+  var tileLayer = new ol.layer.Tile({
+    source: new ol.source.XYZ({
+      projection: 'PIXELS',
+      tileGrid: mapTileGrid,
+      url: options.mapUrl + '{z}/{x}/{y}.png'
+    })
+  })
+
+  this.layers.push(tileLayer)
+
+  this._map = new ol.Map({
+    // 初始化map
+    logo: false,
+    target: options.domId,
+    view: new ol.View({
+      projection: ol.proj.get('PIXELS'),
+      extent: mapExtent,
+      maxResolution: mapTileGrid.getResolution(minZoom),
+      zoom: options.zoom,
+      maxZoom: maxZoom,
+      minZoom: minZoom
+    }),
+    overlays: [this._overlay],
+    layers: this.layers,
+    interactions: ol.interaction.defaults({
+      dragPan: this.dragPan,
+      // 去除两个手指旋转地图--针对移动端
+      pinchRotate: false
+    }),
+    controls: ol.control.defaults({
+      attribution: this.attribution,
+      zoom: this.controlZoom
+    }),
+    moveTolerance: options.moveTolerance
+  })
+  this._map.getView().fit(mapExtent, this._map.getSize())
+  this.setZoom(options.zoom)
+
+  // 设置可视区域范围
+  var rangeCoefficient = options.rangeCoefficient
+  this.mapConfig.viewRange = {
+    minX: -(rangeCoefficient - 1) * options.sizeW,
+    maxX: rangeCoefficient * options.sizeW,
+    minY: -rangeCoefficient * options.sizeH,
+    maxY: (rangeCoefficient - 1) * options.sizeH
+  }
 }
 
 /**
@@ -240,7 +383,6 @@ HDMap.prototype.mapInit = function (options) {
     sizeW:1024,
     sizeH:986,
     domId:'map',
-    projection:'EPSG:3857',
     mapUrl:"map.png",
     maxZoom:3,
     center:[113.619942,23.304629]
@@ -566,19 +708,35 @@ HDMap.prototype.initLineLayer = function () {
 */
 HDMap.prototype.createPopup = function (popupDom) {
   // 创建气泡外层div
-  document.body.appendChild(this.createNode('wrap', 'div', 'id', popupDom.popup, 'hdmap-ol-popup'))
+  document.body.appendChild(
+    this.createNode('wrap', 'div', 'id', popupDom.popup, 'hdmap-ol-popup')
+  )
   this.popup_container = document.getElementById(popupDom.popup)
-  this.toggleClassName(this.popup_container, 'hdmap-list-popup', 'hdmap-ol-popup')
-
+  this.toggleClassName(
+    this.popup_container,
+    'hdmap-list-popup',
+    'hdmap-ol-popup'
+  )
   // 创建气泡关闭div
   if (!this.popup_closestatus) {
-    this.popup_container.appendChild(this.createNode('popcloser', 'a', 'id', popupDom.popupcloser))
+    this.popup_container.appendChild(
+      this.createNode('popcloser', 'a', 'id', popupDom.popupcloser)
+    )
     this.popup_closer = document.getElementById(popupDom.popupcloser)
-    this.toggleClassName(this.popup_closer, 'hdmap-list-popup-closer', 'hdmap-ol-popup-closer')
+    this.toggleClassName(
+      this.popup_closer,
+      'hdmap-list-popup-closer',
+      'hdmap-ol-popup-closer'
+    )
   }
   // 创建气泡内容div
-  this.popup_container.appendChild(this.createNode('popcontent', 'div', 'id', popupDom.popupcontent))
+  this.popup_container.appendChild(
+    this.createNode('popcontent', 'div', 'id', popupDom.popupcontent)
+  )
   this.popup_content = document.getElementById(popupDom.popupcontent)
+  this.popup_container.appendChild(
+    this.createNode('popcontent', 'div', 'id', popupDom.popupcontent)
+  )
 }
 
 // 因为ol3的特性，气泡在地图上由一组div持有，所以这里初始化
@@ -627,7 +785,7 @@ HDMap.prototype.saveOutterPopup = function (popIdList) {
           popWrap.appendChild(popItem)
           popwrap.parentNode.removeChild(popwrap)
         } else {
-          console.warn('popId is undefined')
+          console.warn(warnLogTag + 'popId is undefined')
         }
       }
     }
@@ -648,50 +806,67 @@ HDMap.prototype.saveOutterPopup = function (popIdList) {
  *    markerName:new Date().valueOf(),    //点位的名字  选填
  *    imgUrl:"arrow.png",   //点位展示的图片的url，必填
  *    size:[32,32]    //图片的大小
+ *    zoomLevel: 2 Number类型
  *  }
  *  styleObj: {     选填
  *    color: 'red' 颜色
  *    scale: '1' 缩放
  *    opacity: '1' 透明度
  *    rotation: Math.PI 弧度
- *    anchor: 位置偏移 ，默认值是[0.5,0.5]
+ *    anchor: 位置偏移 ，默认值是[0.5,1]
  *  }
  */
-HDMap.prototype.addMarker = function (markerInfo, styleObj) {
+HDMap.prototype.addMarker = function (markerInfo, styleObj, layerkey) {
+  // 参数验证
   if (!markerInfo.position || markerInfo.position.length !== 2) {
-    console.warn('addMarker Error : marker position can not be empty')
+    console.warn(
+      warnLogTag + 'addMarker Error : marker position can not be empty'
+    )
     return null
   }
-  var layerKey = layerManager.getLayerKeyByType(markerInfo.markerType)
+  if (!this.isInTileMapViewArea(markerInfo.position)) {
+    console.warn(
+      warnLogTag +
+        'addMarker Error : marker position is not in tile map viewArea'
+    )
+    return null
+  }
+  if (!markerInfo.id) {
+    console.warn(warnLogTag + 'addMarker Error : id is required')
+    return null
+  }
+  if (
+    markerInfo.zoomLevel &&
+    (markerInfo.zoomLevel > this.mapConfig.maxZoom ||
+      markerInfo.zoomLevel < this.mapConfig.minZoom)
+  ) {
+    console.warn(
+      warnLogTag +
+        'addMarker Error : zoomLevel is not between maxZoom & minZoom'
+    )
+    return null
+  }
+  var layerKey =
+    layerkey !== undefined
+      ? layerkey
+      : layerManager.getLayerKeyByType(
+        markerInfo.markerType,
+        markerInfo.zoomLevel
+      )
+
   var layer = this.getLayerByKey(layerKey)
   if (layer === undefined || layer === null) {
     // 图层不存在，则进行图层创建的操作
     layer = this.addLayerByLayerKey(layerKey)
-  } else {
-    if (!markerInfo.id) {
-      markerInfo.id = new Date().valueOf()
-    }
-    var feature = this.getMarkerBylayerKey(markerInfo.id, layerKey)
-    if (feature) {
-      // 点位在要添加的图层上已存在，直接返回该点对象
-      return feature
-    }
   }
-  var iconFeature = new ol.DevFeature(
-    {
-      geometry: new ol.geom.Point([
-        markerInfo.position[0],
-        markerInfo.position[1]
-      ]),
-      name: markerInfo.markerName,
-      population: 4000,
-      rainfall: 500
-    },
-    markerInfo,
-    layerKey
-  )
+  var feature = this.getMarkerBylayerKey(markerInfo.id, layerKey)
+  if (feature) {
+    // 点位在要添加的图层上已存在，直接返回该点对象
+    this.updateMarker(markerInfo, styleObj, layerkey)
+    return feature
+  }
+  var iconFeature = createFeature(markerInfo, layerKey)
   iconFeature.setStyle(hdmap.commonConfig.getFeatureStyle(markerInfo, styleObj))
-  iconFeature.setId(markerInfo.id)
   layer.getSource().addFeature(iconFeature)
   return iconFeature
 }
@@ -701,10 +876,10 @@ HDMap.prototype.addMarker = function (markerInfo, styleObj) {
  * @param {Object} markerInfo 统计图标点信息
  * 参数示例：
  *   {
- *     id: 1,  //唯一确定的主键 (必填)
+ *    id: 1,  //唯一确定的主键 (必填)
  *    markerType: 'countCamera' // 统计点点位类型 countCamera | countWarn |countBroadcast 必填
  *    position: [20, 30], //点位的坐标，如果添加在光栅图中，[0,0] 这种类型的数组即可，元素0为x，元素1为y
- *     name: 'aaa',    //点位的名字  选填
+ *    name: 'aaa',    //点位的名字  选填
  *    url: 小图标   必填
  *    baseUrl: 背景图片   必填
  *    cameraNum: '10' String 必填 与 markerType 对应出现
@@ -729,28 +904,27 @@ HDMap.prototype.addCountMarker = function (markerInfo, style) {
       // 图层不存在，则进行图层创建的操作
       layer = this.addLayerByLayerKey(layerKey)
     }
-    var iconFeature = new ol.DevFeature(
-      {
-        geometry: new ol.geom.Point([
-          markerInfo.position[0],
-          markerInfo.position[1]
-        ])
-      },
-      markerInfo,
-      layerKey
-    )
+    var iconFeature = createFeature(markerInfo, layerKey)
     if (markerInfo.markerType === 'countCamera') {
-      countStyle = hdmap.commonConfig.getCountCameraFeatureStyle(markerInfo, style)
+      countStyle = hdmap.commonConfig.getCountCameraFeatureStyle(
+        markerInfo,
+        style
+      )
     } else if (markerInfo.markerType === 'countWarning') {
-      countStyle = hdmap.commonConfig.getCountWarningFeatureStyle(markerInfo, style)
+      countStyle = hdmap.commonConfig.getCountWarningFeatureStyle(
+        markerInfo,
+        style
+      )
     } else if (markerInfo.markerType === 'countBroadcast') {
-      countStyle = hdmap.commonConfig.getCountBroadcastFeatureStyle(markerInfo, style)
+      countStyle = hdmap.commonConfig.getCountBroadcastFeatureStyle(
+        markerInfo,
+        style
+      )
     }
     iconFeature.setStyle(countStyle)
-    iconFeature.setId(markerInfo.id)
     layer.getSource().addFeature(iconFeature)
   } else {
-    console.warn('markerType is error')
+    console.warn(warnLogTag + 'markerType is error')
   }
 }
 
@@ -766,16 +940,7 @@ HDMap.prototype.addBgLayer = function (markerInfo) {
     // 图层不存在，则进行图层创建的操作
     layer = this.addLayerByLayerKey(layerKey)
   }
-  var iconBgFeature = new ol.CountFeature(
-    {
-      geometry: new ol.geom.Point([
-        markerInfo.position[0],
-        markerInfo.position[1]
-      ])
-    },
-    markerInfo,
-    layerKey
-  )
+  var iconBgFeature = createFeature(markerInfo, layerKey)
   if (markerInfo.markerType === 'countWarning') {
     iconBgFeature.setStyle(hdmap.commonConfig.getCountWarningStyle(markerInfo))
   } else if (markerInfo.markerType === 'countCamera') {
@@ -783,7 +948,6 @@ HDMap.prototype.addBgLayer = function (markerInfo) {
   } else if (markerInfo.markerType === 'countBroadcast') {
     iconBgFeature.setStyle(hdmap.commonConfig.getCountDefaultStyle(markerInfo))
   }
-  iconBgFeature.setId(markerInfo.id)
   layer.getSource().addFeature(iconBgFeature)
 }
 
@@ -829,34 +993,72 @@ HDMap.prototype.removeCountMarkers = function (type) {
  * @param {Object} markerInfo
  * 参数示例：
  *   {
- *     id: 1,  //唯一确定的主键 (必填)
+ *    id: 1,  //唯一确定的主键 (必填)
  *    markerType: 'camera' // 点位的类型，决定该点添加的图层，如果不填写，则添加到commonLayer图层上面
  *    position:ol.proj.transform([113.61994199999998, 23.304629000000006],'EPSG:4326', 'EPSG:3857'),
  *      //点位的坐标，示例中是添加在百度地图中的。如果添加在光栅图中，[0,0] 这种类型的数组即可，元素0为x，元素1为y
- *     name:new Date().valueOf(),    //点位的名字  选填
- *     imgUrl:"arrow.png",   //点位展示的图片的url，必填
+ *    name:new Date().valueOf(),    //点位的名字  选填
+ *    imgUrl:"arrow.png",   //点位展示的图片的url，必填
  *    imgSize:[32,32]    //图片的大小
  *   }
  */
-HDMap.prototype.addMarkerByGPS = function (markerInfo) {
-  markerInfo.GPSInfo = markerInfo.position
-  markerInfo.position = this.transfromWGSToBitMap(markerInfo.position)
-  this.addMarker(markerInfo)
+HDMap.prototype.addMarkerByGPS = function (markerInfo, styleObj) {
+  if (this.mapConfig.scaleType === 1 || this.mapConfig.scaleType === '1') {
+    markerInfo.GPSInfo = markerInfo.position
+    markerInfo.position = this.transfromWGSToBitMap(markerInfo.position)
+    this.addMarker(markerInfo, styleObj)
+  } else {
+    console.warn(warnLogTag + 'ScaleType is error')
+  }
+}
+
+/**
+ * HDMap.prototype.addMarkersByGPS
+ * 批量通过GPS新增点位函数
+ * @param {Array} markerList
+ * @param {Object} styleObj
+ *  styleObj: {     选填
+ *    color: 'red' 颜色
+ *    scale: '1' 缩放
+ *    opacity: '1' 透明度
+ *    rotation: Math.PI 弧度
+ *    anchor: 位置偏移 ，默认值是[0.5,0.5]
+ *  }
+ */
+HDMap.prototype.addMarkersByGPS = function (markerList, styleObj) {
+  if (!(markerList instanceof Array)) {
+    console.warn(
+      warnLogTag + 'addMarkersByGPS require an Array instance argument'
+    )
+    return
+  }
+  for (let i = 0; i < markerList.length; i++) {
+    const marker = markerList[i]
+    this.addMarkerByGPS(marker, styleObj)
+  }
 }
 
 /**
  * HDMap.prototype.addMarkers
  * 批量新增点位函数，可以处理批量点位列表
  * @param {Array} markerList
+ * @param {Object} styleObj
+ *  styleObj: {     选填
+ *    color: 'red' 颜色
+ *    scale: '1' 缩放
+ *    opacity: '1' 透明度
+ *    rotation: Math.PI 弧度
+ *    anchor: 位置偏移 ，默认值是[0.5,0.5]
+ *  }
  */
-HDMap.prototype.addMarkers = function (markerList, styleObj) {
+HDMap.prototype.addMarkers = function (markerList, styleObj, layerkey) {
   if (!(markerList instanceof Array)) {
-    console.warn('addMarkers require an Array instance argument')
+    console.warn(warnLogTag + 'addMarkers require an Array instance argument')
     return
   }
   for (let i = 0; i < markerList.length; i++) {
     const marker = markerList[i]
-    this.addMarker(marker, styleObj)
+    this.addMarker(marker, styleObj, layerkey)
   }
 }
 /**
@@ -866,7 +1068,7 @@ HDMap.prototype.addMarkers = function (markerList, styleObj) {
  */
 HDMap.prototype.hideMarkers = function (type) {
   var layerkey = layerManager.getLayerKeyByType(type)
-  this.setLayerVisible(layerkey, false)
+  this.setLayerVisible(layerkey, false, false)
 }
 /**
  * HDMap.prototype.showMarkers
@@ -875,7 +1077,7 @@ HDMap.prototype.hideMarkers = function (type) {
  */
 HDMap.prototype.showMarkers = function (type) {
   var layerkey = layerManager.getLayerKeyByType(type)
-  this.setLayerVisible(layerkey, true)
+  this.setLayerVisible(layerkey, true, true)
 }
 /**
  * 通过marker的id和图层名称移除marker
@@ -886,7 +1088,7 @@ HDMap.prototype.showMarkers = function (type) {
 HDMap.prototype.removeMarkerBylayerKey = function (id, layerKey) {
   var layer = this.getLayerByKey(layerKey)
   if (!layer) {
-    console.warn('please give a legal layerkey')
+    console.warn(warnLogTag + 'please give a legal layerkey')
     return null
   }
   var feature = layer.getSource().getFeatureById(id)
@@ -896,7 +1098,7 @@ HDMap.prototype.removeMarkerBylayerKey = function (id, layerKey) {
 }
 
 /**
- *
+ * HDMap.prototype.removeMarker
  * @param {Object} markerInfo 点位信息
  * 参数示例：
  * {
@@ -911,7 +1113,7 @@ HDMap.prototype.removeMarker = function (markerInfo) {
     if (layerKey && layerKey !== 'commonLayer') {
       var layer = this.getLayerByKey(layerKey)
       if (!layer) {
-        console.warn('can not find this layer:' + layerKey)
+        console.warn(warnLogTag + 'can not find this layer:' + layerKey)
       }
       var feature = layer.getSource().getFeatureById(markerInfo.id)
       if (feature) {
@@ -919,7 +1121,7 @@ HDMap.prototype.removeMarker = function (markerInfo) {
       }
     }
   } else {
-    console.warn('markerInfo is error')
+    console.warn(warnLogTag + 'markerInfo is error')
   }
 }
 
@@ -941,28 +1143,32 @@ HDMap.prototype.removeMarker = function (markerInfo) {
  *  opacity: 0.8 透明度
  * }
  */
-// TODO 怎么通过设备id获取到对应的markerInfo 待实现
-HDMap.prototype.updateMarker = function (markerInfo, styleObj) {
-  // TODO 通过marker， style 获取到id，layerkey，markerinfo，style
-  var layerkey = layerManager.getLayerKeyByType(markerInfo.markerType)
-  var marker
+HDMap.prototype.updateMarker = function (markerInfo, styleObj, layerkey) {
+  // 通过marker， style 获取到id，layerkey，markerinfo，style
   if (!markerInfo.id) {
-    console.warn('markerId can not be empty');
-  } else {
-    marker = this.getMarkerBylayerKey(markerInfo.id, layerkey);
-    if (marker) {
-      var properties = marker.getExtProperties();
-      this.copyAttr(properties, markerInfo);
-      if (markerInfo.position) {
-        marker.getGeometry().setCoordinates(markerInfo.position);
-      }
-      if (markerInfo.markerName) {
-        marker.set('markerName', markerInfo.markerName);
-      }
-      marker.setStyle(hdmap.commonConfig.getFeatureStyle(markerInfo, styleObj));
-    } else {
-      console.warn('This point does not exist');
+    console.warn(warnLogTag + 'markerId can not be empty')
+    return null
+  }
+  var layerKey =
+    layerkey !== undefined
+      ? layerkey
+      : layerManager.getLayerKeyByType(
+        markerInfo.markerType,
+        markerInfo.zoomLevel
+      )
+  var marker = this.getMarkerBylayerKey(markerInfo.id, layerKey)
+  if (marker) {
+    var properties = marker.getExtProperties()
+    this.copyAttr(properties, markerInfo)
+    if (markerInfo.position) {
+      marker.getGeometry().setCoordinates(markerInfo.position)
     }
+    if (markerInfo.markerName) {
+      marker.set('markerName', markerInfo.markerName)
+    }
+    marker.setStyle(hdmap.commonConfig.getFeatureStyle(markerInfo, styleObj))
+  } else {
+    console.warn(warnLogTag + 'This point does not exist')
   }
 }
 
@@ -986,7 +1192,7 @@ HDMap.prototype.copyAttr = function (marker, attrs) {
 HDMap.prototype.getMarkerBylayerKey = function (id, layerKey) {
   var layer = this.getLayerByKey(layerKey)
   if (!layer) {
-    console.warn('please give a layerkey')
+    console.warn(warnLogTag + 'please give a layerkey')
     return null
   }
   var feature = layer.getSource().getFeatureById(id)
@@ -1081,7 +1287,7 @@ HDMap.prototype.addArea = function (areaInfo, styleObj) {
  */
 HDMap.prototype.addAreas = function (areaList, styleObj) {
   if (!(areaList instanceof Array)) {
-    console.warn('addAreas require an Array instance argument')
+    console.warn(warnLogTag + 'addAreas require an Array instance argument')
     return
   }
   for (let i = 0; i < areaList.length; i++) {
@@ -1101,7 +1307,7 @@ HDMap.prototype.updateArea = function (areaInfo, styleObject) {
   if (areaObj) {
     areaObj.setStyle(styleObject)
   } else {
-    console.warn('Warning of hdmap: not find the area')
+    console.warn(warnLogTag + 'Warning of hdmap: not find the area')
   }
 }
 
@@ -1153,7 +1359,7 @@ HDMap.prototype.showArea = function (areaInfo) {
  */
 HDMap.prototype.addLine = function (lineInfo, lineStyle) {
   if (!lineInfo || !lineInfo.borderPoints) {
-    console.warn('addLine require an lineInfo Object')
+    console.warn(warnLogTag + 'addLine require an lineInfo Object')
     return
   }
   var lineLayer = this.outterLayers['lineLayer']
@@ -1206,7 +1412,7 @@ HDMap.prototype.addLine = function (lineInfo, lineStyle) {
  */
 HDMap.prototype.addLines = function (LineList) {
   if (!(LineList instanceof Array)) {
-    console.warn('addLines require an Array instance argument')
+    console.warn(warnLogTag + 'addLines require an Array instance argument')
     return
   }
   let list = []
@@ -1230,7 +1436,7 @@ HDMap.prototype.updateLine = function (lineInfo, styleObject) {
   if (lineObj) {
     lineObj.setStyle(styleObject)
   } else {
-    console.warn('Warning of hdmap: not find the line')
+    console.warn(warnLogTag + 'Warning of hdmap: not find the line')
   }
 }
 /**
@@ -1260,24 +1466,37 @@ HDMap.prototype.getOutterLayers = function () {
   return this.outterLayers
 }
 
-/*
-  在地图上添加图层
-  layerKey : 图层名，用于以后获取特定图层使用
-*/
+/**
+ * 在地图上添加图层
+ * @param {String} layerKey 图层名，用于以后获取特定图层使用
+ */
 HDMap.prototype.addLayerByLayerKey = function (layerKey) {
   if (layerKey) {
     // var hdmap = this
+    // let zd = 11
+    // let adarr = layerKey.split('_')
+    // let zdo = hdmap.commonConfig.getLayerZindex(adarr[0])
+    // if (zdo) zd = zdo.zindex
     var vectorSource = new ol.source.Vector({})
     var vectorLayer = new ol.layer.HDVector(layerKey, {
       source: vectorSource,
       // map: hdmap._map,//map 属性存在问题
-      zIndex: 11
+      zIndex: 11 // zd mod by zmj 2018-04-30 设备点位的层级待定
     })
     this._map.addLayer(vectorLayer)
     this.outterLayers[layerKey] = vectorLayer
+    // 根据当前zoom，和层级显示所需等级对比，判断当前是否显示该层
+    let arr = layerKey.split('_')
+    if (arr[1]) {
+      let level = parseInt(arr[1])
+      let z = this.getZoom()
+      let flag = true
+      if (z < level) flag = false
+      vectorLayer.setVisible(flag)
+    }
     return vectorLayer
   } else {
-    console.warn('addLayer Error : layerKey can not be empty')
+    console.warn(warnLogTag + 'addLayer Error : layerKey can not be empty')
     return null
   }
 }
@@ -1344,20 +1563,21 @@ HDMap.prototype.popupSetPlace = function (coordinate) {
  * popOption: {
  *  domId: 'camera', 必填
  *  visible: true， 必填
- *  arrow: true 选填 默认false，为true，不显示小箭头
+ *  arrow: true 选填 默认false显示箭头
+ *  type: 'cam' 选填 关闭某一类使用
  * } || popOption: 'camera'
  */
 HDMap.prototype.addPopup = function (popOption) {
   if (typeof popOption === 'string') {
     if (document.getElementById(popOption)) {
-      let wrapperDom = this.createNode('wrapperDom', 'div', 'id', popOption + '-wrapper', 'hdmap-popup-wrapper')
+      let wrapperDom = this.createNode(
+        'wrapperDom',
+        'div',
+        'id',
+        popOption + '-wrapper',
+        'hdmap-popup-wrapper'
+      )
       document.body.appendChild(wrapperDom)
-      // var newpopup = this.dragPan ? new ol.Overlay({
-      //   autoPan: true,
-      //   autoPanAnimation: {
-      //     duration: 250
-      //   }
-      // }) : new ol.Overlay({})
       var newpopup = new ol.Overlay({})
       newpopup.setElement(wrapperDom)
       this._overlays[popOption] = newpopup
@@ -1369,23 +1589,29 @@ HDMap.prototype.addPopup = function (popOption) {
       wrapperDom.style.width = width + 'px'
       wrapperDom.appendChild(document.getElementById(popOption))
     } else {
-      console.warn('The element node does not exist')
+      console.warn(warnLogTag + 'The element node does not exist')
     }
   } else if (typeof popOption === 'object' && popOption.visible === true) {
     if (document.getElementById(popOption.domId)) {
       var wrapperDomObject
       if (popOption.arrow === true) {
-        wrapperDomObject = this.createNode('wrapperDomObject', 'div', 'id', popOption.domId + '-wrapper', 'hdmap-popup-wrapper-arrow')
+        wrapperDomObject = this.createNode(
+          'wrapperDomObject',
+          'div',
+          'id',
+          popOption.domId + '-wrapper',
+          'hdmap-popup-wrapper-arrow'
+        )
       } else {
-        wrapperDomObject = this.createNode('wrapperDomObject', 'div', 'id', popOption.domId + '-wrapper', 'hdmap-popup-wrapper')
+        wrapperDomObject = this.createNode(
+          'wrapperDomObject',
+          'div',
+          'id',
+          popOption.domId + '-wrapper',
+          'hdmap-popup-wrapper'
+        )
       }
       document.body.appendChild(wrapperDomObject)
-      // var newObjectpopup = this.dragPan ? new ol.Overlay({
-      //   autoPan: true,
-      //   autoPanAnimation: {
-      //     duration: 250
-      //   }
-      // }) : new ol.Overlay({})
       var newObjectpopup = new ol.Overlay({})
       newObjectpopup.setElement(wrapperDomObject)
       this._overlays[popOption.domId] = newObjectpopup
@@ -1401,7 +1627,7 @@ HDMap.prototype.addPopup = function (popOption) {
       wrapperDomObject.style.width = widthObject + 'px'
       wrapperDomObject.appendChild(document.getElementById(popOption.domId))
     } else {
-      console.warn('The element node does not exist')
+      console.warn(warnLogTag + 'The element node does not exist')
     }
   }
 }
@@ -1421,7 +1647,8 @@ HDMap.prototype.showPopup = function (domId, coordinate, styleObj) {
       var top = styleObj.top ? parseInt(styleObj.top) : -30
       var left = styleObj.left ? parseInt(styleObj.left) : 0
       document.getElementById(domId).parentNode.style.top = -wrapY + top + 'px'
-      document.getElementById(domId).parentNode.style.left = -wrapX / 2 + left + 'px'
+      document.getElementById(domId).parentNode.style.left =
+        -wrapX / 2 + left + 'px'
     } else {
       document.getElementById(domId).parentNode.style.top = -wrapY - 12 + 'px'
     }
@@ -1430,21 +1657,43 @@ HDMap.prototype.showPopup = function (domId, coordinate, styleObj) {
     this._overlays[domId].setPosition(coordinate)
     popupCtrl.setPopupZIndex(domId)
   } else {
-    console.warn('The element node does not exist')
+    console.warn(warnLogTag + 'The element node does not exist')
   }
 }
 
 /**
  * 默认弹窗
  * @param {Array} coordinate click点的位置
- * @param {String} innerHTMl 默认显示内容
+ * @param {String} innerHTML 默认显示内容
  */
-HDMap.prototype.popupDefault = function (coordinate, innerHTMl) {
+HDMap.prototype.popupDefault = function (coordinate, innerHTML) {
   this.closeCommonPopup()
-  this.toggleClassName(this.popup_container, 'hdmap-list-popup', 'hdmap-ol-popup')
-  this.toggleClassName(this.popup_closer, 'hdmap-list-popup-closer', 'hdmap-ol-popup-closer')
-  this.popup_content.innerHTML = innerHTMl
+  this.toggleClassName(
+    this.popup_container,
+    'hdmap-list-popup',
+    'hdmap-ol-popup'
+  )
+  this.toggleClassName(
+    this.popup_container,
+    'hdmap-list-popup-multi',
+    'hdmap-ol-popup-default'
+  )
+  this.toggleClassName(
+    this.popup_closer,
+    'hdmap-list-popup-closer',
+    'hdmap-ol-popup-closer'
+  )
+  this.popup_content.innerHTML = innerHTML
   this.popupSetPlace(coordinate)
+  if (
+    !(this.popup_container.parentNode.querySelector('.hdmap-list-popup-arrow'))
+  ) {
+    var popupArrow = document.createElement('div')
+    popupArrow.setAttribute('class', 'hdmap-list-popup-arrow')
+    this.popup_container.parentNode.appendChild(popupArrow)
+    const ps = new PerfectScrollbar(this.popup_container)
+    console.log(ps)
+  }
 }
 
 /**
@@ -1455,7 +1704,25 @@ HDMap.prototype.popupDefault = function (coordinate, innerHTMl) {
 HDMap.prototype.popupMultipoint = function (coordinate, features) {
   this.popup_content.innerHTML = ''
   this.closeCommonPopup()
-  this.toggleClassName(this.popup_container, 'hdmap-ol-popup', 'hdmap-list-popup')
+  this.toggleClassName(
+    this.popup_container,
+    'hdmap-ol-popup',
+    'hdmap-list-popup'
+  )
+  this.toggleClassName(
+    this.popup_container,
+    'hdmap-ol-popup-default',
+    'hdmap-list-popup-multi'
+  )
+  if (
+    !(this.popup_container.parentNode.querySelector('.hdmap-list-popup-arrow'))
+  ) {
+    var popupArrow = document.createElement('div')
+    popupArrow.setAttribute('class', 'hdmap-list-popup-arrow')
+    this.popup_container.parentNode.appendChild(popupArrow)
+    const ps = new PerfectScrollbar(this.popup_container)
+    console.log(ps)
+  }
   this.popup_closer.classList.remove('hdmap-ol-popup-closer')
   this.popup_contentWrap.length = 0
   for (let i = 0, len = features.length; i < len; i++) {
@@ -1475,14 +1742,15 @@ HDMap.prototype.popupMultipoint = function (coordinate, features) {
   var hdmap = this
   for (let i = 0, len = this.popup_contentWrap.length; i < len; i++) {
     // TODO 这里添加监听的方式可能需要优化，要考虑怎么注销监听
-    this.popup_contentWrap[i].onclick = function () {
+    this.popup_contentWrap[i].onclick = function (e) {
       // TODO 这里考虑回调类型的判断优化
       hdmap.closeCommonPopup()
       var defaultcb = hdmap.eventCallback['singleclick'].default
       defaultcb.call(this, {
         feature: features[i],
         eventType: 'singleclick',
-        coordinate: coordinate
+        coordinate: coordinate,
+        mapEvent: e
       })
     }
   }
@@ -1494,8 +1762,16 @@ HDMap.prototype.popupMultipoint = function (coordinate, features) {
  * @param {Array} coordinate 鼠标点击处的坐标信息
  */
 HDMap.prototype.popupNoFeature = function (coordinate) {
-  this.toggleClassName(this.popup_container, 'hdmap-list-popup', 'hdmap-ol-popup')
-  this.toggleClassName(this.popup_closer, 'hdmap-list-popup-closer', 'hdmap-ol-popup-closer')
+  this.toggleClassName(
+    this.popup_container,
+    'hdmap-list-popup',
+    'hdmap-ol-popup'
+  )
+  this.toggleClassName(
+    this.popup_closer,
+    'hdmap-list-popup-closer',
+    'hdmap-ol-popup-closer'
+  )
   this.popup_content.innerHTML = '当前位置：' + coordinate
   this.popupSetPlace(coordinate)
 }
@@ -1509,7 +1785,7 @@ HDMap.prototype.closePopup = function () {
     if (this._overlays[i].show) {
       this._overlays[i].show = false
     }
-    this._overlays[i].setPosition(undefined);
+    this._overlays[i].setPosition(undefined)
   }
   this._overlay.setPosition(undefined)
   if (this.popup_closer) {
@@ -1529,7 +1805,7 @@ HDMap.prototype.closeCommonPopup = function () {
       if (this._overlays[i].show) {
         this._overlays[i].show = false
       }
-      this._overlays[i].setPosition(undefined);
+      this._overlays[i].setPosition(undefined)
     }
   }
   this._overlay.setPosition(undefined)
@@ -1544,7 +1820,15 @@ HDMap.prototype.closeCommonPopup = function () {
  */
 HDMap.prototype.regDefaulEventCallback = function () {
   for (var eventType in eventRegister) {
-    var key = this._map.on(eventType, eventRegister[eventType])
+    var tarMap = this._map
+    var key = null
+    if (eventType === 'zoomChange') {
+      key = this._map
+        .getView()
+        .on('change:resolution', eventRegister[eventType], tarMap)
+    } else {
+      key = this._map.on(eventType, eventRegister[eventType])
+    }
     this.eventKey[eventType] = key
   }
 }
@@ -1760,7 +2044,7 @@ HDMap.prototype.initDrawLineTool = function (
       }
       return styles
     }
-    var vector = new ol.layer.Vector({
+    var vector = new ol.layer.HDVector('drawLineLayer', {
       source: source,
       style: styleFunction
     })
@@ -1799,7 +2083,7 @@ HDMap.prototype.openDrawLineTool = function (
   this._map.addInteraction(this.drawTool.lineDraw)
   this._map.addInteraction(this.drawTool.lineSnap)
   // 画线开始时，判断是否可画多条，不可则清空之前的画线 mod by zmj 2018-02-25
-  this.eventKey['linedrawstart'] = this.drawTool.lineDraw.on('drawstart', (e) => {
+  this.eventKey['linedrawstart'] = this.drawTool.lineDraw.on('drawstart', e => {
     let that = this
     if (!multi && multi !== undefined) {
       let curMap = e.target.map_
@@ -1821,14 +2105,17 @@ HDMap.prototype.openDrawLineTool = function (
     // if (!multi && multi !== undefined) this.clearDrawLine()
   })
   if (drawendCall) {
-    this.eventKey['linedrawend'] = this.drawTool.lineDraw.on('drawend', (e) => {
+    this.eventKey['linedrawend'] = this.drawTool.lineDraw.on('drawend', e => {
       drawendCall.call(this, e)
     })
   }
   if (modifyCall) {
-    this.eventKey['linemodifyend'] = this.drawTool.lineModify.on('modifyend', function (e) {
-      modifyCall.call(this, e)
-    })
+    this.eventKey['linemodifyend'] = this.drawTool.lineModify.on(
+      'modifyend',
+      function (e) {
+        modifyCall.call(this, e)
+      }
+    )
   }
 }
 
@@ -1844,7 +2131,7 @@ HDMap.prototype.openDrawLineTool = function (
  */
 HDMap.prototype.showDrawLine = function (option) {
   if (!option) {
-    console.warn('showDrawLine Error : option is  must need')
+    console.warn(warnLogTag + 'showDrawLine Error : option is  must need')
     return null
   }
   let layer = this.outterLayers['drawLineLayer']
@@ -1852,7 +2139,9 @@ HDMap.prototype.showDrawLine = function (option) {
     let source = layer.getSource()
     let features = source.getFeatures()
     if (features.length === 0) {
-      console.warn('showDrawLine Error : there is no feature for save')
+      console.warn(
+        warnLogTag + 'showDrawLine Error : there is no feature for save'
+      )
       return null
     }
     let lineFeaturesArr = []
@@ -1959,12 +2248,17 @@ HDMap.prototype.editDrawLine = function (
   modifyCall
 ) {
   if (!option) {
-    console.warn('editDrawLine Error : line option can not be null')
+    console.warn(
+      warnLogTag + 'editDrawLine Error : line option can not be null'
+    )
     return
   }
   let bp = option.position ? option.position : option.borderPoints
   if (!bp) {
-    console.warn('editDrawLine Error : line option.borderPoints or option.position can not be null')
+    console.warn(
+      warnLogTag +
+        'editDrawLine Error : line option.borderPoints or option.position can not be null'
+    )
     return
   }
   var feature = null
@@ -2095,41 +2389,55 @@ HDMap.prototype.initDrawShapeTool = function (type) {
  * @param {*} modifyendCall 修改图形的回调
  * @param {Boolean} multi 是否可同时画多个区域，true可以，false每次只能画一个，默认true
  */
-HDMap.prototype.openDrawShapeTool = function (type, drawendCall, modifyendCall, multi) {
+HDMap.prototype.openDrawShapeTool = function (
+  type,
+  drawendCall,
+  modifyendCall,
+  multi
+) {
   if (!type) type = 'Polygon'
   this.setMapEditState('drawShapeState')
   this.initDrawShapeTool(type)
   // 画区域开始时，判断是否可画多个，不可则清空之前的区域 mod by zmj 2018-02-25
-  this.eventKey['shapedrawstart'] = this.drawTool.shapeDraw.on('drawstart', (e) => {
-    let that = this
-    if (!multi && multi !== undefined) {
-      let curMap = e.target.map_
-      let pix = e.target.downPx_
-      let fArr = curMap.getFeaturesAtPixel(pix)
-      let uidArr = []
-      fArr.map(function (feat, index) {
-        if (feat.getGeometry().getType() === 'Polygon') {
-          uidArr.push(feat.ol_uid)
-        }
-      })
-      let feats = this.getFrontDrawShape() // 当前画线层的所有线feature
-      feats.map(function (feat, index) {
-        if (uidArr.indexOf(feat.ol_uid) === -1) {
-          that.removeFrontDrawShape(feat)
-        }
-      })
+  this.eventKey['shapedrawstart'] = this.drawTool.shapeDraw.on(
+    'drawstart',
+    e => {
+      let that = this
+      if (!multi && multi !== undefined) {
+        let curMap = e.target.map_
+        let pix = e.target.downPx_
+        let fArr = curMap.getFeaturesAtPixel(pix)
+        let uidArr = []
+        fArr.map(function (feat, index) {
+          if (feat.getGeometry().getType() === 'Polygon') {
+            uidArr.push(feat.ol_uid)
+          }
+        })
+        let feats = this.getFrontDrawShape() // 当前画线层的所有线feature
+        feats.map(function (feat, index) {
+          if (uidArr.indexOf(feat.ol_uid) === -1) {
+            that.removeFrontDrawShape(feat)
+          }
+        })
+      }
+      // if (!multi && multi !== undefined) this.clearDrawShape()
     }
-    // if (!multi && multi !== undefined) this.clearDrawShape()
-  })
+  )
   if (drawendCall) {
-    this.eventKey['shapedrawend'] = this.drawTool.shapeDraw.on('drawend', function (/* {ol.interaction.DrawEvent} */ e) {
-      drawendCall.call(this, e)
-    })
+    this.eventKey['shapedrawend'] = this.drawTool.shapeDraw.on(
+      'drawend',
+      function (/* {ol.interaction.DrawEvent} */ e) {
+        drawendCall.call(this, e)
+      }
+    )
   }
   if (modifyendCall) {
-    this.eventKey['shapemodifyend'] = this.drawTool.shapeModify.on('modifyend', function (/* {ol.interaction.DrawEvent} */ e) {
-      modifyendCall.call(this, e)
-    })
+    this.eventKey['shapemodifyend'] = this.drawTool.shapeModify.on(
+      'modifyend',
+      function (/* {ol.interaction.DrawEvent} */ e) {
+        modifyendCall.call(this, e)
+      }
+    )
   }
   // this._map.addInteraction(this.drawTool.shapeSelect)
   this._map.addInteraction(this.drawTool.shapeModify)
@@ -2151,7 +2459,7 @@ HDMap.prototype.openDrawShapeTool = function (type, drawendCall, modifyendCall, 
  */
 HDMap.prototype.showDrawShape = function (option) {
   if (!option) {
-    console.warn('showDrawShape Error : option is  must need')
+    console.warn(warnLogTag + 'showDrawShape Error : option is  must need')
     return null
   }
   var layer = this.outterLayers['drawShapeLayer']
@@ -2160,7 +2468,9 @@ HDMap.prototype.showDrawShape = function (option) {
     var source = layer.getSource()
     var features = source.getFeatures()
     if (features.length === 0) {
-      console.warn('showDrawShape Error : there is no feature for save')
+      console.warn(
+        warnLogTag + 'showDrawShape Error : there is no feature for save'
+      )
       return null
     }
     let optionArr = []
@@ -2257,12 +2567,17 @@ HDMap.prototype.removeFrontDrawShape = function (feat) {
  */
 HDMap.prototype.editDrawShape = function (option, selectCall) {
   if (!option) {
-    console.warn('editDrawShape Error : shape option can not be null')
+    console.warn(
+      warnLogTag + 'editDrawShape Error : shape option can not be null'
+    )
     return
   }
   let bp = option.position ? option.position : option.borderPoints
   if (!bp) {
-    console.warn('editDrawShape Error : shape option.borderPoints or option.position can not be null')
+    console.warn(
+      warnLogTag +
+        'editDrawShape Error : shape option.borderPoints or option.position can not be null'
+    )
     return
   }
   var feature = null
@@ -2323,15 +2638,18 @@ HDMap.prototype.editDrawShape = function (option, selectCall) {
         stretch: false,
         layers: [layer]
       })
-      this.drawTool.transform.on(['rotateend', 'translateend', 'scaleend'],
+      this.drawTool.transform.on(
+        ['rotateend', 'translateend', 'scaleend'],
         function (e) {
           var _angle = e.feature.get('angle')
           if (e.type === 'rotateend') {
             // 弧度转角度
             _angle = -((_angle * 180 / Math.PI - 180) % 360 + 180)
-            if (e.feature.setRotate instanceof Function) e.feature.setRotate(e.feature.rotate + _angle)
+            if (e.feature.setRotate instanceof Function) {
+              e.feature.setRotate(e.feature.rotate + _angle)
+            }
           }
-          console.log('当前的旋转角度：' + e.feature.rotate)
+          console.log(infoLogTag + '当前的旋转角度：' + e.feature.rotate)
           // console.log(e)
         }
       )
@@ -2387,11 +2705,11 @@ HDMap.prototype.closeDrawShapeTool = function () {
     let drawkeystart = this.eventKey['shapedrawstart']
     let drawkey = this.eventKey['shapedrawend']
     let modifykey = this.eventKey['shapemodifyend']
-    ol.Observable.unByKey(drawkeystart);
+    ol.Observable.unByKey(drawkeystart)
     delete this.eventKey['shapedrawstart']
-    ol.Observable.unByKey(drawkey);
+    ol.Observable.unByKey(drawkey)
     delete this.eventKey['shapedrawend']
-    ol.Observable.unByKey(modifykey);
+    ol.Observable.unByKey(modifykey)
     delete this.eventKey['shapemodifyend']
     this._map.removeInteraction(this.drawTool.shapeSelect)
     this._map.removeInteraction(this.drawTool.shapeModify)
@@ -2412,11 +2730,11 @@ HDMap.prototype.closeDrawLineTool = function () {
     let drawstartkey = this.eventKey['linedrawstart']
     let drawkey = this.eventKey['linedrawend']
     let modifykey = this.eventKey['linemodifyend']
-    ol.Observable.unByKey(drawstartkey);
+    ol.Observable.unByKey(drawstartkey)
     delete this.eventKey['linedrawstart']
-    ol.Observable.unByKey(drawkey);
+    ol.Observable.unByKey(drawkey)
     delete this.eventKey['linedrawend']
-    ol.Observable.unByKey(modifykey);
+    ol.Observable.unByKey(modifykey)
     delete this.eventKey['linemodifyend']
     this._map.removeInteraction(this.drawTool.lineModify)
     this._map.removeInteraction(this.drawTool.lineDraw)
@@ -2448,7 +2766,7 @@ HDMap.prototype.setCenter = function (
 ) {
   if (coordinate) {
     if (zoom) {
-      this._map.getView().setZoom(zoom)
+      this.setZoom(zoom)
       this._map.getView().setCenter(coordinate)
     } else {
       this._map.getView().setCenter(coordinate)
@@ -2471,12 +2789,23 @@ HDMap.prototype.getCenter = function () {
  * @param {number} zoom
  */
 HDMap.prototype.setZoom = function (zoom) {
-  if (zoom && zoom > this.mapConfig.maxZoom) {
-    this._map.getView().setZoom(this.mapConfig.maxZoom)
-  } else if (zoom && zoom < this.mapConfig.minZoom) {
-    this._map.getView().setZoom(this.mapConfig.minZoom)
+  if (this.mapConfig.gisEngine === 'tile') {
+    zoom = zoom - this.mapConfig.minZoom;
+    if (zoom && zoom > this.mapConfig.maxZoom) {
+      this._map.getView().setZoom(this.mapConfig.maxZoom - this.mapConfig.minZoom);
+    } else if (zoom && zoom < 0) {
+      this._map.getView().setZoom(0);
+    } else {
+      this._map.getView().setZoom(zoom);
+    }
   } else {
-    this._map.getView().setZoom(zoom)
+    if (zoom && zoom > this.mapConfig.maxZoom) {
+      this._map.getView().setZoom(this.mapConfig.maxZoom);
+    } else if (zoom && zoom < this.mapConfig.minZoom) {
+      this._map.getView().setZoom(this.mapConfig.minZoom);
+    } else {
+      this._map.getView().setZoom(zoom);
+    }
   }
 }
 
@@ -2486,7 +2815,12 @@ HDMap.prototype.setZoom = function (zoom) {
  * @return {number}
  */
 HDMap.prototype.getZoom = function () {
-  return this._map.getView().getZoom()
+  var zoom = this._map.getView().getZoom()
+  if (this.mapConfig.gisEngine === 'tile') {
+    return zoom + this.mapConfig.minZoom
+  } else {
+    return zoom;
+  }
 }
 
 /*
@@ -2511,14 +2845,30 @@ HDMap.prototype.getLonLat = function (e, isGis) {
   layerKey:为图层的标识
   flag:为图层的显示\隐藏  true 显示   false 隐藏
 */
-HDMap.prototype.setLayerVisible = function (layerKey, flag) {
-  var layer = this.getLayerByKey(layerKey)
+HDMap.prototype.setLayerVisible = function (layerKey, flag, isforbi) {
+  let z = this.mapConfig.maxZoom
+  let nowZoom = this.getZoom()
+  let lk = ''
+  let bool = false
+  let layer = null
+  for (let i = Math.floor(z); i > 0; i--) {
+    lk = layerKey + '_' + i
+    layer = this.getLayerByKey(lk)
+    if (layer) {
+      if (nowZoom >= i) layer.setVisible(flag)
+      if (isforbi !== undefined) layer.setVisibleFlag(isforbi)
+      bool = true
+    }
+  }
+  layer = this.getLayerByKey(layerKey)
   if (layer) {
     layer.setVisible(flag)
-    // 上面那句执行完后必须要鼠标点击或者拖动一下地图，我们才看的到图层进行隐藏\显示了，
-    // 所以加上这句，强制它动一下。
-    this._map.updateSize()
+    if (isforbi !== undefined) layer.setVisibleFlag(isforbi)
+    bool = true
   }
+  // 上面那句执行完后必须要鼠标点击或者拖动一下地图，我们才看的到图层进行隐藏\显示了，
+  // 所以加上这句，强制它动一下。
+  if (bool) this._map.updateSize()
 }
 
 /*
@@ -2569,16 +2919,28 @@ HDMap.prototype.openDragTool = function (
     this.initDragTool()
   }
   if (dragStartCall) {
-    this.eventKey['translatestart'] = this.dragFeatureTool.translate.on('translatestart', dragStartCall)
+    this.eventKey['translatestart'] = this.dragFeatureTool.translate.on(
+      'translatestart',
+      dragStartCall
+    )
   }
   if (dragEndCall) {
-    this.eventKey['translateend'] = this.dragFeatureTool.translate.on('translateend', dragEndCall)
+    this.eventKey['translateend'] = this.dragFeatureTool.translate.on(
+      'translateend',
+      dragEndCall
+    )
   }
   if (dragIngCall) {
-    this.eventKey['translating'] = this.dragFeatureTool.translate.on('translating', dragIngCall)
+    this.eventKey['translating'] = this.dragFeatureTool.translate.on(
+      'translating',
+      dragIngCall
+    )
   }
   if (selectCall) {
-    this.eventKey['select'] = this.dragFeatureTool.select.on('select', selectCall)
+    this.eventKey['select'] = this.dragFeatureTool.select.on(
+      'select',
+      selectCall
+    )
   }
   this.dragFeatureTool.select.set('multi', multi)
   this._map.addInteraction(this.dragFeatureTool.select)
@@ -2595,15 +2957,15 @@ HDMap.prototype.closeDragTool = function () {
     let transend = this.eventKey['translateend']
     let transing = this.eventKey['translating']
     let select = this.eventKey['select']
-    ol.Observable.unByKey(transstart);
+    ol.Observable.unByKey(transstart)
     delete this.eventKey['translatestart']
-    ol.Observable.unByKey(transend);
+    ol.Observable.unByKey(transend)
     delete this.eventKey['translateend']
-    ol.Observable.unByKey(transing);
+    ol.Observable.unByKey(transing)
     delete this.eventKey['translating']
-    ol.Observable.unByKey(select);
+    ol.Observable.unByKey(select)
     delete this.eventKey['select']
-    console.log('transstart = ')
+    console.log(infoLogTag + 'transstart = ')
     console.log(transstart)
     this._map.removeInteraction(this.dragFeatureTool.select)
     this._map.removeInteraction(this.dragFeatureTool.translate)
@@ -2619,8 +2981,6 @@ HDMap.prototype.getDragState = function () {
 }
 
 // TODO: 需要将这些坐标转换的工具函数进行提取或者封装，不需要向外暴露
-// TODO: GPS坐标和xy坐标的转换函数有些还需要转换--需要研究一下
-// TODO: 在mapExample中可以看到，在GIS地图上地图坐标还需要通过转化之后传入，需要将这个转化操作封装到对应的函数中
 
 /**
  * 经纬度转球面墨卡托坐标系
@@ -2634,7 +2994,8 @@ HDMap.prototype.translate_4326_to_3857 = function (position) {
     (position[1] > 90 || position[1] < -90)
   ) {
     console.warn(
-      'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
+      warnLogTag +
+        'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
     )
     return
   }
@@ -2665,7 +3026,8 @@ HDMap.prototype.translate_bd09_to_gcj02 = function (position) {
     (position[1] > 90 || position[1] < -90)
   ) {
     console.warn(
-      'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
+      warnLogTag +
+        'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
     )
     return
   }
@@ -2691,7 +3053,8 @@ HDMap.prototype.translate_gcj02_to_bd09 = function (position) {
     (position[1] > 90 || position[1] < -90)
   ) {
     console.warn(
-      'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
+      warnLogTag +
+        'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
     )
     return
   }
@@ -2717,7 +3080,8 @@ HDMap.prototype.translate_gcj02_to_4326 = function (position) {
     (position[1] > 90 || position[1] < -90)
   ) {
     console.warn(
-      'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
+      warnLogTag +
+        'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
     )
     return
   }
@@ -2745,7 +3109,8 @@ HDMap.prototype.translate_4326_to_gcj02 = function (position) {
     (position[1] > 90 || position[1] < -90)
   ) {
     console.warn(
-      'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
+      warnLogTag +
+        'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
     )
     return
   }
@@ -2774,7 +3139,8 @@ HDMap.prototype.translate_4326_to_bd09 = function (position) {
     (position[1] > 90 || position[1] < -90)
   ) {
     console.warn(
-      'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
+      warnLogTag +
+        'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
     )
     return
   }
@@ -2795,60 +3161,13 @@ HDMap.prototype.translate_bd09_to_4326 = function (position) {
     (position[1] > 90 || position[1] < -90)
   ) {
     console.warn(
-      'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
+      warnLogTag +
+        'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
     )
     return
   }
   var tmp = this.translate_bd09_to_gcj02(position)
   var lonlat = this.translate_gcj02_to_4326(tmp)
-  return lonlat
-}
-
-/**
- * 经纬度(4326)坐标换算光栅图坐标
- * @param {Array} 经纬度坐标
- * @return {Array} 光栅坐标
- */
-HDMap.prototype.transfromWGSToBitMap = function (position) {
-  if (
-    position[0] > 180 ||
-    position[0] < -180 ||
-    (position[1] > 90 || position[1] < -90)
-  ) {
-    console.warn(
-      'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
-    )
-    return
-  }
-  var mlonlat = this.translate_4326_to_3857(position)
-  var mcenter = this.translate_4326_to_3857(this.mapConfig.centerGPS)
-
-  var pntX = (mlonlat[0] - mcenter[0]) / this.mapConfig.scale
-  var pntY = (mlonlat[1] - mcenter[1]) / this.mapConfig.scale
-  var pnt = [pntX, pntY]
-  // var pnt = [mlonlat[0] - mcenter[0], mlonlat[1] - mcenter[1]];
-  return pnt
-}
-
-/**
- * 光栅图坐标转换经纬度(4326)坐标
- * @param {Array} 光栅图坐标
- * @return {Array} 经纬度
- */
-HDMap.prototype.transBitmapToWGS = function (coordinate) {
-  if (this.mapConfig.scaleType !== 1) {
-    console.warn('this map cannot translate XYZ to GPS')
-    return
-  }
-  var coorX = coordinate[0] * this.mapConfig.scale
-  var coorY = coordinate[1] * this.mapConfig.scale
-  var mcenter = this.translate_4326_to_3857(this.mapConfig.centerGPS)
-  if (!mcenter) {
-    console.warn('centerGPS of this map error')
-    return
-  }
-  var mlonlat = [mcenter[0] + coorX, mcenter[1] + coorY]
-  var lonlat = this.translate_3857_to_4326(mlonlat)
   return lonlat
 }
 
@@ -2880,13 +3199,14 @@ HDMap.prototype.destroy = function () {
   var layers = this._map.getLayers()
   for (var j = 0; j < layers.getLength(); j++) {
     if (layers.item(j).getSource().clear) {
-      layers.item(j).getSource().clear()
+      layers
+        .item(j)
+        .getSource()
+        .clear()
     }
   }
   layers.clear()
   delete hdmap.mapManager[this.getMapUid()]
-  // 后面加上自己清理的一些逻辑就好了
-  // TODO: 需要完善注销函数中的清理
 }
 
 /**
@@ -2926,7 +3246,7 @@ HDMap.prototype.clearMap = function () {
  */
 HDMap.prototype.changeZoom = function () {
   this._map.getView().on('change:resolution', function (e) {
-    var zoom = this._map.getView().getZoom()
+    var zoom = this.getZoom()
     return zoom
   })
 }
@@ -2939,7 +3259,13 @@ HDMap.prototype.changeZoom = function () {
  * @param {String} value 属性值
  * @param {String} className 类名
  */
-HDMap.prototype.createNode = function (element, nodeName, attr, value, className) {
+HDMap.prototype.createNode = function (
+  element,
+  nodeName,
+  attr,
+  value,
+  className
+) {
   element = document.createElement(nodeName)
   element.setAttribute(attr, value)
   if (className) {
@@ -2959,7 +3285,10 @@ HDMap.prototype.toggleClassName = function (element, oldName, newName) {
     element.classList.remove(oldName)
     element.classList.add(newName)
   } else {
-    element.className = element.className.replace(new RegExp('(^|\\b)' + oldName.split(' ').join('|') + '(\\b|$)', 'gi'), ' ')
+    element.className = element.className.replace(
+      new RegExp('(^|\\b)' + oldName.split(' ').join('|') + '(\\b|$)', 'gi'),
+      ' '
+    )
     element.className += ' ' + newName
   }
 }
@@ -2967,7 +3296,7 @@ HDMap.prototype.toggleClassName = function (element, oldName, newName) {
 /**
  * 获取当前弹窗显示个数
  * @return {Number}
-*/
+ */
 HDMap.prototype.popupShowNum = function () {
   let popnum = 0
   for (var o in this._overlays) {
@@ -2981,7 +3310,7 @@ HDMap.prototype.popupShowNum = function () {
 /**
  * 关闭指定弹窗
  * @param {String} popName 弹窗节点名
-*/
+ */
 HDMap.prototype.closeSinglePopup = function (popName) {
   this._overlays[popName].show = false
   this._overlays[popName].setPosition(undefined)
@@ -2991,8 +3320,8 @@ HDMap.prototype.closeSinglePopup = function (popName) {
 
 /**
  * 关闭某类弹窗
- * @param {String} type 弹窗节点名
-*/
+ * @param {String} type 类型
+ */
 HDMap.prototype.closeTypePopup = function (type) {
   for (var i in this._overlays) {
     if (this._overlays[i].type === type) {
@@ -3002,6 +3331,412 @@ HDMap.prototype.closeTypePopup = function (type) {
   }
   popupCtrl.curPopNum = this.popupShowNum()
   popupCtrl.reset()
-};
+}
+
+/**
+ * 经纬度(4326)坐标换算光栅图坐标
+ * @param {Array} 经纬度坐标
+ * @return {Array} 光栅坐标
+ */
+HDMap.prototype.transfromWGSToBitMap = function (lonlat) {
+  if (
+    lonlat[0] > 180 ||
+    lonlat[0] < -180 ||
+    lonlat[1] > 90 ||
+    lonlat[1] < -90
+  ) {
+    console.warn(
+      warnLogTag +
+        'Error: Longitude range: -180 to 180, latitude range: -90 to 90'
+    )
+    return null
+  }
+  if (this.mapConfig.scaleType === 1 || this.mapConfig.scaleType === '1') {
+    var mlonlat = this.translate_4326_to_3857(lonlat)
+    var mcenter = this.translate_4326_to_3857(this.mapConfig.centerGPS)
+    if (!mcenter) {
+      console.warn(warnLogTag + 'centerGPS of this map error')
+      return
+    }
+    var pntX = (mlonlat[0] - mcenter[0]) / this.mapConfig.scale
+    var pntY = (mlonlat[1] - mcenter[1]) / this.mapConfig.scale
+    var r = Math.sqrt(Math.pow(pntX, 2) + Math.pow(pntY, 2))
+    var angle = Math.atan2(pntY, pntX) - this.mapConfig.arcAngle
+    var pos = []
+    pos[0] = r * Math.cos(angle)
+    pos[1] = r * Math.sin(angle)
+    return pos
+  } else {
+    console.warn(warnLogTag + 'ScaleType must equal 1')
+    return null
+  }
+}
+
+/**
+ * 光栅图坐标转换经纬度(4326)坐标
+ * @param {Array} 光栅图坐标
+ * @return {Array} 经纬度
+ */
+HDMap.prototype.transBitmapToWGS = function (coordinate) {
+  if (this.mapConfig.scaleType !== '1' && this.mapConfig.scaleType !== 1) {
+    console.warn(warnLogTag + 'this map cannot translate XYZ to GPS')
+    return
+  }
+
+  // 坐标转换成3857坐标
+  function toLonArr (point, center, scale, arcAngle) {
+    var angle = Math.atan2(point[1], point[0]) + arcAngle
+    var r = Math.sqrt(Math.pow(point[0], 2) + Math.pow(point[1], 2))
+    let arr = []
+    arr[0] = center[0] + r * Math.cos(angle) * scale
+    arr[1] = center[1] + r * Math.sin(angle) * scale
+    return arr
+  }
+
+  var mcenter = this.translate_4326_to_3857(this.mapConfig.centerGPS)
+  if (!mcenter) {
+    console.warn(warnLogTag + 'centerGPS of this map error')
+    return
+  }
+  var lonArr = toLonArr(
+    coordinate,
+    mcenter,
+    this.mapConfig.scale,
+    this.mapConfig.arcAngle
+  )
+  var lonlat = this.translate_3857_to_4326(lonArr)
+  return lonlat
+}
+
+/**
+ * 获取两点位之间的距离
+ * @param {Array} pointA 点位光栅坐标
+ * @param {Array} pointB 点位光栅坐标
+ */
+HDMap.prototype.getDistanceByMarker = function (pointA, pointB) {
+  var distance
+  if (this.mapConfig.scaleType === 1 || this.mapConfig.scaleType === '1') {
+    var lonA = this.transBitmapToWGS(pointA)
+    var lonB = this.transBitmapToWGS(pointB)
+    distance = this.getDistance(lonA, lonB)
+    return distance
+  } else if (this.mapConfig.scaleType === 2) {
+    let sizeDistance = Math.sqrt(
+      Math.pow(pointA[0] - pointB[0], 2) + Math.pow(pointA[1] - pointB[1], 2)
+    )
+    distance = sizeDistance / this.mapConfig.scale
+    return distance
+  } else {
+    console.warn(warnLogTag + 'ScaleType is error')
+    return null
+  }
+}
+
+/**
+ * 添加报警弹窗
+ * @param {Object} warnInfo 报警信息
+ */
+HDMap.prototype.addWarnPopup = function (warnInfo, fn) {
+  if (!document.getElementById(warnInfo.id)) {
+    let color =
+      warnInfo && warnInfo.color
+        ? warnInfo.color
+        : warnInfo.type === 'danger'
+          ? '255,165,0'
+          : '255,0,0'
+    // 创建弹窗
+    var wrapperDomObject = this.createNode(
+      'wrapperDomObject',
+      'div',
+      'id',
+      warnInfo.id,
+      'hdmap-warn-pop'
+    )
+    wrapperDomObject.innerText = warnInfo.text || '报警事件'
+    wrapperDomObject.style.backgroundColor = `rgb(${color})`
+    // 创建箭头div
+    var arrow = this.createNode(
+      'arrow',
+      'div',
+      'id',
+      warnInfo.domId + '-arrow',
+      'hdmap-warn-pop-arrow'
+    )
+    arrow.style.borderRightColor = `rgb(${color})`
+    wrapperDomObject.appendChild(arrow)
+    document.body.appendChild(wrapperDomObject)
+    // 添加点击事件
+    if (fn && typeof fn === 'function') {
+      wrapperDomObject.onclick = fn
+    }
+    // 创建气泡
+    var newObjectpopup = new ol.Overlay({})
+    newObjectpopup.setElement(wrapperDomObject)
+    this._warnOverlays[warnInfo.id] = newObjectpopup
+    this.getMap().addOverlay(newObjectpopup)
+    // 显示气泡
+    this._warnOverlays[warnInfo.id].setPosition(warnInfo.position)
+  } else {
+    console.warn(warnLogTag + 'node is already save')
+  }
+}
+
+/**
+ * 点位报警
+ * @param {Object} warnInfo 点位信息
+ * {
+ *  position: [0,0], 必填
+ *  id: '111', 必填
+ *  type: 'warn' || 'danger', 默认warn
+ *  text: '落水预警', 默认'报警事件'
+ *  color: '100,100,100' 自定义动画颜色，当传入color，type不起作用
+ * }
+ */
+HDMap.prototype.warnMarkerStart = function (warnInfo, fn) {
+  let color =
+    warnInfo && warnInfo.color
+      ? warnInfo.color
+      : warnInfo.type === 'danger'
+        ? '255,165,0'
+        : '255,0,0'
+  var layerKey = layerManager.getLayerKeyByType('warnMarker')
+  var layer = this.getLayerByKey(layerKey)
+  if (layer === undefined || layer === null) {
+    // 图层不存在，则进行图层创建的操作
+    layer = this.addLayerByLayerKey(layerKey)
+  }
+  layer.setZIndex(999)
+  // 创建点位
+  var feature2 = createFeature(warnInfo, layerKey, 'out')
+  var feature1 = createFeature(warnInfo, layerKey, 'in')
+  var feature = createFeature(warnInfo, layerKey)
+
+  // 添加样式
+  feature.setStyle(warnStyle(10, `rgba(${color},1)`))
+
+  // 添加点位，只执行一次
+  if (!layer.getSource().getFeatureById(warnInfo.id)) {
+    layer.getSource().addFeature(feature)
+    layer.getSource().addFeature(feature1)
+    layer.getSource().addFeature(feature2)
+  }
+
+  // 监听动画，改变样式
+  var radius = 0
+  this._map.on('postcompose', function () {
+    radius += 0.4
+    if (radius < 10) {
+      feature2.setStyle(warnStyle(0, `rgba(${color},0.3)`))
+      feature1.setStyle(warnStyle(0, `rgba(${color},0.5)`))
+    } else if (radius < 20 && radius >= 10) {
+      feature1.setStyle(warnStyle(15, `rgba(${color},0.5)`))
+    } else if (radius < 30 && radius >= 20) {
+      feature2.setStyle(warnStyle(20, `rgba(${color},0.3)`))
+    } else if (radius >= 30) {
+      radius = 0
+      feature2.setStyle(warnStyle(0, `rgba(${color},0.3)`))
+      feature1.setStyle(warnStyle(0, `rgba(${color},0.5)`))
+    }
+  })
+
+  // 添加气泡
+  if (fn && typeof fn === 'function') {
+    this.addWarnPopup(warnInfo, fn)
+  } else {
+    this.addWarnPopup(warnInfo)
+  }
+  return feature
+}
+
+/**
+ * 取消点位报警
+ * @param {Object} warnInfo 点位信息
+ */
+HDMap.prototype.warnMarkerCancel = function (warnInfo) {
+  // 移除点位
+  this.removeMarkerBylayerKey(warnInfo.id + 'in', 'warnMarkerLayer')
+  this.removeMarkerBylayerKey(warnInfo.id + 'out', 'warnMarkerLayer')
+  this.removeMarkerBylayerKey(warnInfo.id, 'warnMarkerLayer')
+  // 移除气泡
+  this.getMap().removeOverlay(this._warnOverlays[warnInfo.id])
+}
+
+/**
+ * 更新点位报警
+ * @param {Object} warnInfo 点位信息
+ */
+HDMap.prototype.updateWarnMarker = function (warnInfo) {
+  if (!warnInfo.id) {
+    console.warn(warnLogTag + 'markerId can not be empty')
+  } else {
+    let marker = this.getMarkerBylayerKey(warnInfo.id, 'warnMarkerLayer')
+    let markerIn = this.getMarkerBylayerKey(
+      warnInfo.id + 'in',
+      'warnMarkerLayer'
+    )
+    let markerOut = this.getMarkerBylayerKey(
+      warnInfo.id + 'out',
+      'warnMarkerLayer'
+    )
+    if (marker) {
+      var properties = marker.getExtProperties()
+      this.copyAttr(properties, warnInfo)
+      if (warnInfo.position) {
+        // 更新点位与弹窗
+        marker.getGeometry().setCoordinates(warnInfo.position)
+        markerIn.getGeometry().setCoordinates(warnInfo.position)
+        markerOut.getGeometry().setCoordinates(warnInfo.position)
+        this._warnOverlays[warnInfo.id].setPosition(warnInfo.position)
+      }
+    } else {
+      console.warn(warnLogTag + 'This point does not exist')
+    }
+  }
+}
+
+/**
+ * 创建点位
+ * @param {Object} warnInfo 点位信息
+ * @param {String} layerKey 图层名
+ * @param {String} suffix 后缀
+ */
+function createFeature (warnInfo, layerKey, suffix) {
+  var feature = new ol.DevFeature(
+    {
+      geometry: new ol.geom.Point(warnInfo.position),
+      name: warnInfo.markerName,
+      population: 4000,
+      rainfall: 500
+    },
+    warnInfo,
+    layerKey
+  )
+  if (suffix) {
+    feature.setId(warnInfo.id + suffix)
+  } else {
+    feature.setId(warnInfo.id)
+  }
+  return feature
+}
+
+/**
+ * 报警点样式
+ * @param {Number} radius 半径
+ * @param {String} color 颜色
+ */
+function warnStyle (radius, color) {
+  var style = new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: radius,
+      fill: new ol.style.Fill({
+        color: color
+      })
+    })
+  })
+  return style
+}
+
+/**
+ * 添加报警弹窗
+ * @param {Object} warnInfo 报警信息
+ * {
+ *  position: [0,0], 必填
+ *  id: '111', 必填
+ *  type: '', 默认danger
+ *  text: '落水预警', 默认'预警事件'
+ * }
+ */
+HDMap.prototype.addWarningPopup = function (warnInfo) {
+  if (!document.getElementById(warnInfo.id)) {
+    var type = warnInfo.type ? warnInfo.type : 'danger'
+    var text = warnInfo.text ? warnInfo.text : '预警事件'
+    var html
+    var wrapperDomObject = this.createNode(
+      'wrapperDomObject',
+      'div',
+      'id',
+      warnInfo.id,
+      'hdmap-warning-popup-wrap'
+    )
+    if (type === 'warn') {
+      html = `<div class="hdmap-popup-warn"></div><div class="hdmap-warn-pop">${text}<div class="hdmap-warn-pop-arrow"></div></div>`
+    } else {
+      html = `<div class="hdmap-popup-danger"></div><div class="hdmap-danger-pop">${text}<div class="hdmap-danger-pop-arrow"></div></div>`
+    }
+    wrapperDomObject.innerHTML = html
+    document.body.appendChild(wrapperDomObject)
+    // 添加点击事件
+    var that = this
+    wrapperDomObject.onclick = function (e) {
+      that.eventCallback['singleclick'].default.call(this, {
+        feature: warnInfo,
+        eventType: 'singleclick',
+        coordinate: warnInfo.position,
+        layerKey: null,
+        mapEvent: {
+          originalEvent: e
+        }
+      })
+    }
+    // 创建气泡
+    var newObjectpopup = new ol.Overlay({})
+    newObjectpopup.setElement(wrapperDomObject)
+    this._warnOverlays[warnInfo.id] = newObjectpopup
+    this.getMap().addOverlay(newObjectpopup)
+    // 显示气泡
+    this._warnOverlays[warnInfo.id].setPosition(warnInfo.position)
+  } else {
+    console.warn('node is already save')
+  }
+}
+
+/**
+ * 移除报警弹窗
+ * @param {String} id 点位id
+ */
+HDMap.prototype.removeWarningPopup = function (id) {
+  // 移除气泡
+  this.getMap().removeOverlay(this._warnOverlays[id])
+}
+
+/**
+ * 清除全部报警弹窗
+ */
+HDMap.prototype.clearWarningPopup = function () {
+  // 移除气泡
+  for (var i in this._warnOverlays) {
+    this.getMap().removeOverlay(this._warnOverlays[i])
+  }
+}
+
+/**
+ * 判断点位是否在可视区域内
+ * @param {Array} coordinate 需要判断的点位坐标（可以为GPS）
+ * @param {Number} isGPS 传递的coordinate是否为GPS坐标
+ * @returns {Boolean} 点位是否在可视区域内
+ */
+HDMap.prototype.isInTileMapViewArea = function (coordinate, isGPS) {
+  if (this.mapConfig.gisEngine !== 'tile') {
+    return true
+  }
+  if (isGPS) {
+    coordinate = this.transfromWGSToBitMap(coordinate)
+    if (!coordinate) {
+      console.warn(warnLogTag + ' can not translate GPS to position')
+      return false
+    }
+  }
+  var range = this.mapConfig.viewRange
+  if (
+    coordinate[0] >= range.minX &&
+    coordinate[0] <= range.maxX &&
+    coordinate[1] >= range.minY &&
+    coordinate[1] <= range.maxY
+  ) {
+    return true
+  } else {
+    return false
+  }
+}
 
 export default HDMap

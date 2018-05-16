@@ -3,10 +3,13 @@
     <!-- 装初始化地图的容器 必有-->
     <div id="bitmap" style="width: 100%">
     </div>
-    <el-button type="success" @click="edit">开启编辑</el-button>
-    <el-button type="success" @click="save">保存编辑</el-button>
-    <el-button type="success" @click="updatePark">更新车位</el-button>
-    <el-button type="success" @click="editOnce">再次编辑</el-button>
+    <el-button @click="close(warna)">取消报警A</el-button>
+    <el-button @click="close(warnb)">取消报警B</el-button>
+    <el-button @click="close(warnc)">取消报警C</el-button>
+    <el-button @click="start(warna)">开启报警A</el-button>
+    <el-button @click="start(warnb)">开启报警B</el-button>
+    <el-button @click="start(warnc)">开启报警C</el-button>
+    <el-button @click="update(warnd)">更新报警C</el-button>
   </div>
 </template>
 <script>
@@ -17,25 +20,35 @@ import img from '@/assets/images/u22560.png'
 import icon from '@/assets/images/u22456.png'
 export default {
   name: 'TestMap',
-  data() {
+  data () {
     return {
-      parkingCenter: [],
-      areaInfo: {
-        id: 123,
-        name: 'eastArea',
-        areaType: '01',
-        borderPoints: [],
-        areaTypesOf: 'parking'
+      bitmap: null,
+      warna: {
+        id: 111,
+        position: [0, 0],
+        text: '落水报警',
+        type: 'danger'
       },
-      styleObject: {
-        fillColor: 'rgba(0,0,0,.2)',
-        strokeColor: 'pink',
-        strokeWidth: 2
+      warnb: {
+        id: 222,
+        position: [0, 200],
+        text: '重点人员'
       },
-      rotate: 0
+      warnc: {
+        id: 999,
+        position: [-200, 100],
+        type: 'danger',
+        color: '148,0,211'
+      },
+      warnd: {
+        id: 111,
+        position: [100, 100],
+        text: '落水报警',
+        type: 'danger'
+      },
     }
   },
-  mounted() {
+  mounted () {
     // eslint-disable-next-line
     // 初始化一个地图
     this.bitmap = new hdmap.initMap({
@@ -46,81 +59,111 @@ export default {
       mapUrl: mapImg,
       maxZoom: 7,
       minZoom: 3,
-      center: [112.334403, 39.8]
+      center: [0, 0],
+      scaleType: 1,
     })
-    let areaInfo = {
+    let _this = this
+    // console.log(this.bitmap._map.getControls().getArray())
+    // this.bitmap._map.controls.array_[0].element.className = 'hdmap-ol-zoom ol-unselectable ol-control'
+    this.bitmap.regEventListener('singleclick', function (e) {
+      console.log(e)
+    })
+    this.bitmap.addMarker({
+      id: 444,
+      position: [0, 0],
+      imgUrl: markerImg
+    })
+    this.bitmap.addArea({
+      id: '2525',
+      name: '22222',
+      areaType: 'areatest',
       borderPoints: [
         [
-          [-179.03620993107282, 221.90611955975558],
-          [-143.4593303108392, 203.62263968071161],
-          [-180.02629006892718, 132.46888044024442],
-          [-215.6031696891608, 150.75236031928839],
-          [-179.03620993107282, 221.90611955975558]
+          [300, -250],
+          [-0, -200],
+          [-300, 200],
+          [-300, 250],
+          [0, -200],
+          [300, -300],
+          [300, 250],
+          [250, 200]
         ]
       ],
-      id: '00001',
-      areaType: '002',
-      name: '00002',
-      areaTypesOf: 'parking',
       visible: true
-    }
-    let style = {
-      fillColor: 'rgba(0,0,0,.2)',
-      strokeColor: 'pink',
-      strokeWidth: 2
-    }
-    let markerInfo = {
+    },
+      {
+        fillColor: 'rgba(139,35,35,0.5)',
+        strokeColor: 'orange'
+      })
+    this.bitmap.addArea({
+      id: '5555',
+      name: '22222',
+      areaType: 'areatest',
+      borderPoints: [
+        [
+          [-42.5, 94.9375],
+          [-41.5, 33.9375],
+          [-151, 20],
+          [-151.5, 100],
+          [-68.5, 112.9375],
+          [-42.5, 100]
+        ]
+      ],
+      visible: true
+    },
+      {
+        fillColor: 'red',
+        strokeColor: 'orange'
+      })
+    var a = this.bitmap.getMarkerBylayerKey('2525', 'gisLayer')
+    var b = this.bitmap.getMarkerBylayerKey('5555', 'gisLayer')
+    console.log(a)
+    console.log(b.getGeometry().getExtent())
+    console.log(a.getGeometry().intersectsExtent(b.getGeometry().getExtent()))
+    // console.log(a.getGeometry().getFlatInteriorPoint())
+    let inOrOut = hdmap.utils.judgePointInsidePolygon(
+      null,
+      [
+        [
+          [300, -250],
+          [-0, -200],
+          [-300, 200],
+          [-300, 250],
+          [0, -200],
+          [300, -300],
+          [300, 250],
+          [250, 200]
+        ]
+      ]
+    )
+    console.log(inOrOut)
+    this.bitmap.addMarker({
       id: 666,
-      position: [-179.43224198621456, 186.1312239119511],
-      markerType: 'car',
-      markerName: '8888',
-      imgUrl: img
-    }
-    let markerIcon = {
-      id: 777,
-      position: [-179.43224198621456, 186.1312239119511],
-      markerType: 'video',
-      markerName: '8888',
-      imgUrl: icon
-    }
-    let styleRotation = {
-      rotation: 0.47471726753091326
-    }
-    this.bitmap.addArea(areaInfo, style)
-    this.bitmap.addMarker(markerInfo, styleRotation)
-    this.bitmap.addMarker(markerIcon)
+      position: [-200, 100],
+      imgUrl: markerImg
+    })
   },
   methods: {
-    // 开启编辑状态
-    edit() {
-      this.bitmap.regEventListener('singleclick', e => {
-        var parkingCenter = e.coordinate
-        console.log(parkingCenter)
-        this.areaInfo.borderPoints = hdmap.utils.getParkingCoordinates(
-          parkingCenter
-        )
-        this.bitmap.editDrawShape(this.areaInfo)
-        console.log(this.areaInfo)
+    close (a) {
+      this.bitmap.warnMarkerCancel(a)
+    },
+    start (a) {
+      this.bitmap.warnMarkerStart(a, function (e) {
+        console.log(a)
+        if (a.id === 111) {
+          console.log(1111111111)
+        } else {
+          console.log(222222222)
+        }
+      })
+      this.bitmap.addMarker({
+        id: 666,
+        position: [-400, 100],
+        imgUrl: markerImg
       })
     },
-    save() {
-      var feat = this.bitmap.showDrawShape()
-      console.log(feat[0].getRotate())
-      this.areaInfo.borderPoints = feat[0].getGeometry().getCoordinates()
-      this.rotate = feat[0].getRotate()
-    },
-    updatePark() {
-      this.bitmap.getMap().on('precompose', () => {
-        this.bitmap.updateArea(
-          this.areaInfo,
-          hdmap.commonConfig.getMouseOverAreaStyle(this.styleObject)
-        )
-        this.bitmap.getMap().updatesize()
-      })
-    },
-    editOnce() {
-      console.log(this.areaInfo)
-      this.bitmap.editDrawShape(this.areaInfo)
+    update (a) {
+      this.bitmap.updateWarnMarker(a)
     }
   }
 }

@@ -5,14 +5,6 @@
     <ul>
       <li v-for="(item,index) in resdata" :key="index">{{item.name}}</li>
     </ul>
-    <!-- <el-row class="row">
-      <el-col :span="6">
-        <el-button type="success">设置初始化点位聚合半径</el-button>
-      </el-col>
-      <el-col :span="13">
-        <el-input v-model="radius1" placeholder="请输入点位聚合半径"></el-input>
-      </el-col>
-    </el-row> -->
     <el-row class="row">
       <el-col :span="6">
         <el-button type="success" @click="getZoom">获取地图层级（最小为3）</el-button>
@@ -60,6 +52,21 @@ export default {
   mounted () {
     // eslint-disable-next-line
     // 初始化一个地图
+    // this.bitmap = new hdmap.initMap({
+    //   gisEngine: 'tile',
+    //   sizeW: 13623,
+    //   sizeH: 9796,
+    //   domId: 'bitmap',
+    //   mapUrl: 'http://zc200008pc1.hdsc.com/hdyj/',
+    //   maxZoom: 6,
+    //   minZoom: 0,
+    //   center: [0, 0],
+    //   centerGPS: [113.619942, 23.304629],
+    //   scale: 1.21,
+    //   scaleType: 1,
+    //   arcAngle: 1.2 // 弧度值
+    // })
+    // this.bitmap._map.updateSize()
     this.bitmap = new hdmap.initMap({
       gisEngine: 'bitmap',
       sizeW: 1920,
@@ -74,6 +81,10 @@ export default {
         popupcloser: 'popup-closer',
         popupcontent: 'popup-content'
       }
+    })
+    // console.log(this.bitmap.mapConfig.gisEngine);
+    this.bitmap.regEventListener('zoomChange', (e) => {
+      console.log(this.bitmap.getMap().getView().getResolution());
     })
     var areaInfo = {
       id: 1133333,
@@ -128,9 +139,10 @@ export default {
   methods: {
     open () {
       this.bitmap.regEventListener('singleclick', (e) => {
+        console.log(e.feature.layerkey)
         var coordinate = e.coordinate;
         this.resdata = hdmap.utils.getFeaturesInExtent(this.bitmap, coordinate)
-        console.log(this.resdata);
+        console.log(this.resdata)
       });
     },
     addMarker () {

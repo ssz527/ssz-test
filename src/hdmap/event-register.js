@@ -14,7 +14,7 @@ function getDefaultCallback (map, eventType) {
 function getTargetMap (e) {
   return hdmap.mapManager[e.map.ol_uid]
 }
-
+var curZoom = 0
 var eventRegister = {
   /**
    * eventType: singleclick
@@ -42,7 +42,7 @@ var eventRegister = {
         features = features.filter(function (item) {
           return item.imgUrl && item.markerType !== 'car'
         })
-        if (features.length > 1) {
+        if (features.length > 1 && feature instanceof ol.DevFeature) {
           tarMap.popupMultipoint(e.coordinate, features)
           return
         }
@@ -58,18 +58,17 @@ var eventRegister = {
             featureType = 'common'
           }
           var callback = tarMap.eventCallback.singleclick[featureType]
+          var backEventObj = {
+            feature: feature.extProperties,
+            eventType: 'singleclick',
+            coordinate: e.coordinate,
+            layerKey: feature.layerKey,
+            mapEvent: e
+          }
           if (callback) {
-            callback.call(this, {
-              feature: feature.extProperties,
-              eventType: 'singleclick',
-              coordinate: e.coordinate
-            })
+            callback.call(this, backEventObj)
           } else if (defaultCallback !== null) {
-            defaultCallback.call(this, {
-              feature: feature.extProperties,
-              eventType: 'singleclick',
-              coordinate: e.coordinate
-            })
+            defaultCallback.call(this, backEventObj)
           }
         }
       } else {
@@ -78,92 +77,12 @@ var eventRegister = {
           defaultCallback.call(this, {
             feature: null,
             eventType: 'singleclick',
-            coordinate: e.coordinate
+            coordinate: e.coordinate,
+            layerKey: null,
+            mapEvent: e
           })
         }
-        // tarMap.closePopup();
       }
-    }
-  },
-  /**
-   * eventType: pointerdrag
-   * 鼠标拖动开始事件的默认处理函数
-   * @param {event} e 事件
-   */
-  // pointerdrag: function (e) {
-  //   // TODO 默认事件处理，需要判断是否编辑状态，如果是编辑状态，需要记录拖动的点位，在结束时做对应的处理
-  //   var tarMap = getTargetMap(e)
-  //   // 如果没有处于编辑状态，退出事件处理
-  //   if (!tarMap.getMapEditState()) { // getDragState
-  //     return
-  //   }
-  //   // 获取到事件点位的feature对象
-  //   var feature = e.map.forEachFeatureAtPixel(e.pixel, function (
-  //     feature,
-  //     layer
-  //   ) {
-  //     return feature
-  //   })
-  //   if (tarMap.eventCallback.pointerdrag.default !== null) {
-  //     tarMap.eventCallback.pointerdrag.default.call(this, {
-  //       feature: feature,
-  //       eventType: 'pointerdrag',
-  //       coordinate: e.coordinate
-  //     })
-  //   }
-  // },
-  /**
-   * eventType: dragend
-   * 拖动开始事件的默认处理函数
-   * @param {event} e 事件
-   */
-  dragstart: function (e) {
-    // TODO 默认事件处理，需要判断是否编辑状态，如果是编辑状态，需要记录拖动的点位，在结束时做对应的处理
-    var tarMap = getTargetMap(e)
-    // 如果没有处于编辑状态，退出事件处理
-    if (!tarMap.getMapEditState()) { // getDragState
-      return
-    }
-    // 获取到事件点位的feature对象
-    var feature = e.map.forEachFeatureAtPixel(e.pixel, function (
-      feature,
-      layer
-    ) {
-      return feature
-    })
-    if (tarMap.eventCallback.dragstart.default !== null) {
-      tarMap.eventCallback.dragstart.default.call(this, {
-        feature: feature,
-        eventType: 'dragstart',
-        coordinate: e.coordinate
-      })
-    }
-  },
-  /**
-   * eventType: dragend
-   * 拖动结束事件的默认处理函数
-   * @param {event} e 事件
-   */
-  dragend: function (e) {
-    // TODO 默认事件处理，需要判断是否编辑状态，如果是编辑状态，结束时需要变动对应点位
-    var tarMap = getTargetMap(e)
-    // 如果没有处于编辑状态，退出事件处理
-    if (!tarMap.getDragState()) {
-      return
-    }
-    // 获取到事件点位的feature对象
-    var feature = e.map.forEachFeatureAtPixel(e.pixel, function (
-      feature,
-      layer
-    ) {
-      return feature
-    })
-    if (tarMap.eventCallback.dragend.default !== null) {
-      tarMap.eventCallback.dragend.default.call(this, {
-        feature: feature,
-        eventType: 'dragend',
-        coordinate: e.coordinate
-      })
     }
   },
   /**
@@ -171,7 +90,6 @@ var eventRegister = {
    * 点位选中事件监听
    * @param {event} e 事件
    */
-
   selected: function (e) {
     // TODO 选择点位事件处理
     var tarMap = getTargetMap(e)
@@ -281,6 +199,68 @@ var eventRegister = {
         feature: null,
         eventType: 'pointermove',
         coordinate: e.coordinate
+      })
+    }
+  },
+  /**
+   * eventType: zoomChange
+   * 地图等级变化事件监听
+   * @param {event} e 事件
+   */
+  zoomChange: function (e) {
+    var tarMap = hdmap.mapManager[this.ol_uid]
+    var defaultCallback = getDefaultCallback(tarMap, 'zoomChange')
+    var zoom = tarMap.getZoom();
+    let nowZoom = parseInt(zoom)
+    // 地图缩放时，控制层级的显示、隐藏
+    if (curZoom !== nowZoom) {
+      curZoom = nowZoom
+      let layerArr = tarMap.outterLayers
+      for (let item in layerArr) {
+        let layer = layerArr[item]
+        let lkey = layer.layerKey
+        let zl = lkey.split('_')
+        if (zl[1]) {
+          if (curZoom >= parseInt(zl[1]) && layer.getVisibleFlag()) {
+            tarMap.setLayerVisible(lkey, true)
+          } else {
+            tarMap.setLayerVisible(lkey, false)
+          }
+        }
+      }
+    }
+    if (defaultCallback !== null) {
+      defaultCallback.call(this, {
+        zoom: zoom,
+        eventType: 'zoomChange'
+      })
+    }
+  },
+  /**
+   * eventType: movestart
+   * 地图等级变化事件监听
+   * @param {event} e 事件
+   */
+  movestart: function (e) {
+    var tarMap = getTargetMap(e)
+    var defaultCallback = getDefaultCallback(tarMap, 'movestart')
+    if (defaultCallback !== null) {
+      defaultCallback.call(this, {
+        eventType: 'movestart'
+      })
+    }
+  },
+  /**
+   * eventType: moveend
+   * 地图等级变化事件监听
+   * @param {event} e 事件
+   */
+  moveend: function (e) {
+    var tarMap = getTargetMap(e)
+    var defaultCallback = getDefaultCallback(tarMap, 'moveend')
+    if (defaultCallback !== null) {
+      defaultCallback.call(this, {
+        eventType: 'moveend'
       })
     }
   }

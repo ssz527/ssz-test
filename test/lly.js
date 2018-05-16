@@ -1,6 +1,6 @@
 import "../src/hdmap/mapManager.js";
 export const lly = function() {
-  window.mapObj = {};
+  window.mapObjlly = {};
   // 测试模块
 
   window.map5 = new hdmap.initMap({

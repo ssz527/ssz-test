@@ -248,5 +248,31 @@
     console.log(e.feature.getGeometry().getCoordinates())
   })
 
+  // 测试省份名字排序
+  function pinyinSort(arr, empty) {
+   if(!String.prototype.localeCompare)
+   return null;
+   var zh = "阿八嚓哒妸发旮哈讥咔垃痳拏噢妑七呥扨它穵夕丫帀".split('');
+    var data1=[];
+    for(var i=0;i<=zh.length;i++){
+      $.each(arr, function(k, v) {
+      if((!zh[i - 1] || zh[i - 1].localeCompare(v.cityName, 'zh') <= 0) && v.cityName.localeCompare(zh[i], 'zh') == -1) {
+        data1.push(this);
+      }
+    }); 
+  }
+  return data1;
+  }
 
+  var arr2 = [
+              {"id" : "v1", "cityName" : "北京"},
+              {"id" : "v2", "cityName" : "上海"},
+              {"id" : "v5", "cityName" : "天津"},
+              {"id" : "v7", "cityName" : "安徽"},
+              {"id" : "v3", "cityName" : "呼和浩特"},
+              {"id" : "v4", "cityName" : "包头"},
+              {"id" : "v9", "cityName" : "海南"},
+              {"id" : "v8", "cityName" : "张家口"}
+          ];
+   console.log(pinyinSort(arr2));
 </script>

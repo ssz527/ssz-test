@@ -31,7 +31,17 @@ module.exports = {
     autoOpenBrowser: true,
     assetsSubDirectory: 'static',
     assetsPublicPath: '/',
-    proxyTable: {},
+    proxyTable: {
+      // TODO 代理-跨域处理
+      '/scp-mapapp/mapService': {
+        target: 'http://192.168.0.108:8040/', // 陈伟波(地图应用)
+        changeOrigin: true
+      },
+      '/scp-mapapp/mapapp': {
+        target: 'http://192.168.0.108:8040/', // 陈伟波(地图应用) wagger: http://192.168.0.236:9036/
+        changeOrigin: true
+      }
+    },
 
     // Use Eslint Loader?
     // If true, your code will be linted during bundling and
