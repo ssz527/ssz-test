@@ -1142,10 +1142,14 @@ var popupCtrl = {
   }
 
   /**
-   * HDMap
-   * @param {Object} options map初始化参数
+   * 弹框延时控制器
    */
-};function HDMap(options) {
+};var popupDuration = null;
+/**
+ * HDMap
+ * @param {Object} options map初始化参数
+ */
+function HDMap(options) {
   // 左上角 +- 控制
   this.controlZoom = true;
   // 鼠标点击，拖动地图
@@ -1182,6 +1186,8 @@ var popupCtrl = {
   this._overlays = [];
   // 点位报警气泡
   this._warnOverlays = [];
+  // 点位名称气泡
+  this._viewOverlay = {};
   // 存储区域报警定时器
   this.areaTimer = {};
   // 存储电子围栏报警定时器
@@ -1377,13 +1383,13 @@ HDMap.prototype.mapInit = function (options) {
   };
  */
 HDMap.prototype.initTileMap = function (options) {
-  var mapExtent = [0.00000000, -options.sizeH, options.sizeW, 0.00000000];
+  var mapExtent = [0.0, -options.sizeH, options.sizeW, 0.0];
   var minZoom = options.minZoom;
   var maxZoom = options.maxZoom;
   var mapMinZoom = options.tileMinZoom;
   var mapMaxZoom = options.tileMaxZoom;
   var mapMaxResolution = options.mapMaxResolution;
-  var tileExtent = [0.00000000, -options.sizeH, options.sizeW, 0.00000000];
+  var tileExtent = [0.0, -options.sizeH, options.sizeW, 0.0];
 
   for (var z = 0; z <= mapMaxZoom; z++) {
     this.mapResolutions.push(Math.pow(2, mapMaxZoom - z) * mapMaxResolution);
@@ -4448,12 +4454,141 @@ HDMap.prototype.addWarningPopup = function (warnInfo) {
 };
 
 /**
+ * 添加报警弹窗
+ * @param {Object} warnInfo 报警信息
+ * {
+ *  position: [0,0], 必填
+ *  id: '111', 必填
+ *  type: '', 默认danger
+ *  markerType: 'warning', 固定值,用于区分点击事件回调
+ *  textList: []],text集合, 默认[{text:'预警事件',count:1}],
+ * }
+ */
+HDMap.prototype.addWarningPopupRe = function (warnInfo) {
+  if (!document.getElementById(warnInfo.id)) {
+    var textList = [];
+    var type = warnInfo.type ? warnInfo.type : 'danger';
+    if (warnInfo.textList.length === 0) {
+      textList.push({ text: '预警事件', count: 1 });
+    } else {
+      textList = warnInfo.textList;
+    }
+    var html;
+    var wrapperDomObject = this.createNode('wrapperDomObject', 'div', 'id', warnInfo.id, 'hdmap-warning-popup-wrap');
+    if (type === 'warn') {
+      html = '<div class="hdmap-popup-warn"></div><div class="hdmap-warn-pop">';
+      for (var i = 0; i < textList.length; i++) {
+        var warningInfo = textList[i];
+        var textStr = '';
+        if (warningInfo.count === 0) {
+          continue;
+        } else if (warningInfo.count === 1) {
+          textStr = warningInfo.text;
+        } else {
+          textStr = warningInfo.text + '(' + warningInfo.count + ')';
+        }
+        html += '<div class="hdmap-warn-pop-textBox-warn">' + textStr + '</div>';
+      }
+      html += '<div class="hdmap-warn-pop-arrow"></div></div>';
+    } else {
+      html = '<div class="hdmap-popup-danger"></div><div class="hdmap-danger-pop">';
+      for (var _i2 = 0; _i2 < textList.length; _i2++) {
+        var _warningInfo = textList[_i2];
+        var _textStr = '';
+        if (_warningInfo.count === 0) {
+          continue;
+        } else if (_warningInfo.count === 1) {
+          _textStr = _warningInfo.text;
+        } else {
+          _textStr = _warningInfo.text + '(' + _warningInfo.count + ')';
+        }
+        html += '<div class="hdmap-warn-pop-textBox-danger">' + _textStr + '</div>';
+      }
+      html += '<div class="hdmap-danger-pop-arrow"></div></div>';
+    }
+    wrapperDomObject.innerHTML = html;
+    document.body.appendChild(wrapperDomObject);
+    // 添加点击事件
+    var that = this;
+    wrapperDomObject.onclick = function (e) {
+      that.eventCallback['singleclick'].default.call(this, {
+        feature: warnInfo,
+        eventType: 'singleclick',
+        coordinate: warnInfo.position,
+        layerKey: null,
+        mapEvent: {
+          originalEvent: e
+        }
+      });
+    };
+    // 创建气泡
+    var newObjectpopup = new ol.Overlay({});
+    newObjectpopup.setElement(wrapperDomObject);
+    this._warnOverlays[warnInfo.id] = newObjectpopup;
+    this.getMap().addOverlay(newObjectpopup);
+    // 显示气泡
+    this._warnOverlays[warnInfo.id].setPosition(warnInfo.position);
+  } else {
+    console.warn('node is already save');
+  }
+};
+/**
+ * 添加名称弹窗
+ * @param {Object} warnInfo 报警信息
+ * {
+ *  position: [0,0], 必填
+ *  id: '111', 必填
+ *  type: '', 默认danger
+ *  text: '落水预警', 默认'预警事件'
+ * }
+ */
+HDMap.prototype.addViewPopup = function (warnInfo, duration, style) {
+  var that = this;
+  that.removeViewPopup();
+  if (duration) {
+    popupDuration = setTimeout(function () {
+      that.removeViewPopup();
+    }, duration);
+  }
+  var text = warnInfo.text ? warnInfo.text : '未命名';
+  var html;
+  var wrapperDomObject = this.createNode('wrapperDomObject', 'div', 'id', 'hdmapView', 'hdmap-view-popup-wrap');
+  html = '<div class="hdmap-view-pop">' + text + '<div class="hdmap-view-pop-arrow"></div></div>';
+
+  wrapperDomObject.innerHTML = html;
+  document.body.appendChild(wrapperDomObject);
+  if (style && style.backgroundColor) {
+    var popupContent = wrapperDomObject.querySelector('.hdmap-view-pop');
+    var popupArrow = wrapperDomObject.querySelector('.hdmap-view-pop-arrow');
+    popupContent.style.backgroundColor = style.backgroundColor;
+    popupArrow.style.backgroundColor = style.backgroundColor;
+  }
+  // 创建气泡
+  var newObjectpopup = new ol.Overlay({});
+  newObjectpopup.setElement(wrapperDomObject);
+  this._viewOverlay = newObjectpopup;
+  this.getMap().addOverlay(newObjectpopup);
+  // 显示气泡
+  this._viewOverlay.setPosition(warnInfo.position);
+};
+/**
  * 移除报警弹窗
  * @param {String} id 点位id
  */
 HDMap.prototype.removeWarningPopup = function (id) {
   // 移除气泡
   this.getMap().removeOverlay(this._warnOverlays[id]);
+};
+
+/**
+ * 移除点位名称弹窗
+ * @param {String} id 点位id
+ */
+HDMap.prototype.removeViewPopup = function (id) {
+  clearTimeout(popupDuration);
+  popupDuration = null;
+  // 移除气泡
+  this.getMap().removeOverlay(this._viewOverlay);
 };
 
 /**

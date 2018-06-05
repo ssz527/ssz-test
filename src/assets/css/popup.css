@@ -334,13 +334,21 @@ img {
     cursor: pointer;
 }
 
+.hdmap-view-popup-wrap {
+    box-sizing: border-box;
+    position: relative;
+    cursor: pointer;
+    top: 2px;
+    right: 2px;
+}
+
 .hdmap-danger-pop,
-.hdmap-warn-pop {
+.hdmap-warn-pop,
+.hdmap-view-pop {
     padding: 0 12px;
     text-align: center;
     color: #fff;
     font-size: 16px;
-    height: 30px;
     line-height: 30px;
     position: absolute;
     bottom: 40px;
@@ -354,11 +362,32 @@ img {
     box-shadow: 0 12px 12px rgba(0, 0, 0, 0.3);
 }
 
+.hdmap-warn-pop-textBox-warn,
+.hdmap-warn-pop-textBox-danger {
+    width: 100%;
+    box-sizing: border-box;
+    height: 30px;
+}
+
+.hdmap-warn-pop-textBox-warn:last-child,
+.hdmap-warn-pop-textBox-danger:last-child {
+    border-color: transparent;
+}
+
+.hdmap-warn-pop-textBox-danger {
+    border-bottom: 1px solid rgba(56, 29, 0, 0.08)
+}
+
+.hdmap-warn-pop-textBox-warn {
+    border-bottom: 1px solid rgba(56, 0, 0, 0.08);
+}
+
 .hdmap-danger-pop-arrow,
-.hdmap-warn-pop-arrow {
+.hdmap-warn-pop-arrow,
+.hdmap-view-pop-arrow {
     position: absolute;
     left: 50%;
-    top: 28px;
+    bottom: -7px;
     box-sizing: border-box;
     width: 8px;
     height: 8px;
@@ -370,6 +399,17 @@ img {
     -webkit-transform: rotate(45deg) translateX(-50%);
     border-top: 1px solid transparent;
     border-left: 1px solid transparent;
+}
+
+.hdmap-view-pop {
+    background: #6DB51E;
+    border: 1px solid rgba(56, 29, 0, 0.66);
+}
+
+.hdmap-view-pop-arrow {
+    background: #6DB51E;
+    border-right: 1px solid rgba(56, 29, 0, 0.66);
+    border-bottom: 1px solid rgba(56, 29, 0, 0.66);
 }
 
 .hdmap-danger-pop {

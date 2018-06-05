@@ -86,6 +86,22 @@ export default {
       console.log('single click event')
       console.log(e)
     })
+    let param = {
+      id: '123123123123123123',
+      type: 'danger',
+      textList: [{ text: '落水预警', count: 2 }, { text: '园区越界', count: 1 }, { text: '视频呼叫', count: 0 }],
+      position: [6000, -4500]
+    }
+    this.mapObj.addWarningPopupRe(param)
+    this.mapObj.removeWarningPopup(param.id)
+
+    let param2 = {
+      id: '123123123123123124',
+      type: 'warn',
+      textList: [{ text: '落水预警', count: 1 }, { text: '园区越界', count: 0 }, { text: '视频呼叫', count: 2 }],
+      position: [4500, -6000]
+    }
+    this.mapObj.addWarningPopupRe(param2)
   }
 }
 </script>
